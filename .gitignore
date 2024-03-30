@@ -1,0 +1,14 @@
+# Development
+venv
+Makefile
+dist
+*egg-info*
+
+# macOS files
+.DS_Store
+
+# Caches
+*cache*
+*.bkp
+*.dtmp
+*.ipynb_checkpoints

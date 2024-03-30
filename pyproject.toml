@@ -1,0 +1,44 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "pybind11"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nastro"
+version = "0.0.1"
+description = "Numerical astrodynamics"
+authors = [
+    { name = "Alfonso Sánchez Rodríguez", email = "alfonso.sr.trabajo@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26.4"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pybind11",
+    "pytest"
+]
+
+[tool.setuptools.packages.find]
+where = [
+    "src"
+]
+
+[tool.mypy]
+mypy_path = "src"
+check_untyped_defs = false
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
