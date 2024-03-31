@@ -1,11 +1,11 @@
 import numpy as np
-from typing import Self, Any, Iterator
+from typing import Self, Any, Iterator, Sequence
 from numpy.typing import NDArray
 from datetime import datetime
 
 Double = np.floating | float
 Vector = NDArray[np.floating]
-Date = datetime
+Array = np.ndarray
 
 """
 NOTE: Updated implementation of cartesian and keplerian states and their
@@ -13,6 +13,103 @@ derivatives. Custom date type is replaced by datetime.datetime and the new
 implementations for the types break backwards compatibility, so the rest of
 the library must be updated before these can be used.
 """
+
+
+class Date(datetime):
+    """Calendar date and time"""
+
+    def as_list(self) -> list[int]:
+        return [self.year, self.month, self.day, self.hour, self.minute, self.second]
+
+    def as_jd(self) -> "JulianDate":
+        """Conversion to Julian date and time
+
+        Algorithm: Practical astrodynamics slides - 2.16
+        """
+
+        C = np.trunc((self.month - 14) / 12)
+        jd0 = self.day - 32075 + np.trunc(1461 * (self.year + 4800 + C) / 4)
+        jd0 += np.trunc(367 * (self.month - 2 - C * 12) / 12)
+        jd0 -= np.trunc(3 * np.trunc((self.year + 4900 + C) / 100) / 4)
+        jd = jd0 - 0.5
+        fr = self.hour / 24.0 + self.minute / 1440.0 + self.second / 86400.0
+
+        return JulianDate(jd, fr)
+
+
+class JulianDate[T: (Double, Vector)]:
+    """Julian date and time"""
+
+    def __init__(self, jd: T, fr: T) -> None:
+        self.int = jd
+        self.mint = jd - 2400000.5
+        self.frac = fr
+        return None
+
+    def __eq__(self, other) -> bool:
+        is_jd = isinstance(other, JulianDate)
+        is_this_jd = (self.int == other.int) and (self.frac == other.frac)
+        return is_jd and is_this_jd
+
+    @property
+    def mjd(self) -> T:
+        return self.mint + self.frac
+
+    @property
+    def jd(self) -> T:
+        """Adds integer and fractional parts"""
+        return self.int + self.frac
+
+    def as_date(self) -> Date | Sequence[Date]:
+        """Conversion to calendar date and time
+
+        Algorithm: Practical astrodynamics slides - 2.17
+        """
+
+        jd0 = self.int + 0.5
+        L1 = np.trunc(jd0 + 68569)
+        L2 = np.trunc(4 * L1 / 146097)
+        L3 = L1 - np.trunc((146097 * L2 + 3) / 4)
+        L4 = np.trunc(4000 * (L3 + 1) / 1461001)
+        L5 = L3 - np.trunc(1461 * L4 / 4) + 31
+        L6 = np.trunc(80 * L5 / 2447)
+        L7 = np.trunc(L6 / 11)
+        day = L5 - np.trunc(2447 * L6 / 80)
+        month = L6 + 2 - 12 * L7
+        year = 100 * (L2 - 49) + L4 + L7
+        hour = np.trunc(self.frac * 24)
+        rem = self.frac * 24 - hour
+        minute = np.trunc(rem * 60)
+        rem = rem * 60 - minute
+        second = np.round(rem * 60)
+        micro_second = np.trunc((rem * 60 - second) * 1e6)
+
+        if isinstance(self.int, Double):
+            return Date(
+                int(year),
+                int(month),
+                int(day),
+                int(hour),
+                int(minute),
+                int(second),
+                int(micro_second),
+            )
+
+        elif isinstance(self.int, np.ndarray):
+            return [
+                Date(
+                    int(year[i]),
+                    int(month[i]),
+                    int(day[i]),
+                    int(hour[i]),
+                    int(minute[i]),
+                    int(second[i]),
+                    int(micro_second[i]),
+                )
+                for i in range(self.int.size)
+            ]
+        else:
+            raise TypeError("Unexpected type for Julian date")
 
 
 class GenericState[T: (Double, Vector)]:
@@ -28,7 +125,6 @@ class GenericState[T: (Double, Vector)]:
     """
 
     def __init__(self, q1: T, q2: T, q3: T, q4: T, q5: T, q6: T) -> None:
-
         if isinstance(q1, Double):
             self.scalar = True
             input = np.array([q1, q2, q3, q4, q5, q6], dtype=np.float64)
@@ -65,7 +161,6 @@ class GenericState[T: (Double, Vector)]:
         return self.q1.size
 
     def __getitem__(self, index: int | slice) -> Self:
-
         return type(self)(
             self.q1[index],
             self.q2[index],
@@ -76,11 +171,9 @@ class GenericState[T: (Double, Vector)]:
         )
 
     def __iter__(self) -> Iterator[Self]:
-
         return iter([self.__getitem__(idx) for idx in range(self.size)])
 
     def __add__(self, other: Self | Double | int) -> Self:
-
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
             return type(self)(
@@ -106,7 +199,6 @@ class GenericState[T: (Double, Vector)]:
             )
 
     def __sub__(self, other: Self | Double | int) -> Self:
-
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
             return type(self)(
@@ -117,7 +209,7 @@ class GenericState[T: (Double, Vector)]:
                 self.q5 - other,
                 self.q6 - other,
             )
-        elif isinstance(other, Self):
+        elif isinstance(other, self.__class__):
             return type(self)(
                 self.q1 - other.q1,
                 self.q2 - other.q2,
@@ -132,7 +224,6 @@ class GenericState[T: (Double, Vector)]:
             )
 
     def __mul__(self, other: Self | Double | int) -> Self:
-
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
             return type(self)(
@@ -158,7 +249,6 @@ class GenericState[T: (Double, Vector)]:
             )
 
     def __eq__(self, other) -> bool:
-
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
             return (
@@ -184,7 +274,6 @@ class GenericState[T: (Double, Vector)]:
             )
 
     def append(self, other: Self | Double | int) -> Self:
-
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
             return type(self)(
@@ -208,7 +297,6 @@ class GenericState[T: (Double, Vector)]:
             raise TypeError("Append is only supported for state vectors and scalars")
 
     def asarray(self) -> Vector:
-
         return np.array(
             [self.q1, self.q2, self.q3, self.q4, self.q5, self.q6], dtype=np.float64
         )
@@ -275,7 +363,6 @@ class CartesianState[T: (Double, Vector)](GenericState):
         return np.linalg.norm(self.v_vec, axis=0)
 
     def __repr__(self) -> str:
-
         return (
             "Cartesian state vector\n"
             "----------------------\n"
@@ -286,6 +373,55 @@ class CartesianState[T: (Double, Vector)](GenericState):
             f"dy: {self.dy}\n"
             f"dz: {self.dz}"
         )
+
+    def as_keplerian(self, mu: Double) -> "KeplerianState":
+        """Conversion to keplerian state vector
+
+        Algorithm: Practical astrodynamics slides
+
+        :param mu: Gravitational parameter of central body [m^3/s^2]
+        """
+        # TODO: Ensure that loss of accuracy in np.sum is not relevant
+
+        # Semi-major axis
+        a = 1.0 / ((2.0 / self.r_mag) - (self.v_mag * self.v_mag / mu))
+
+        # Angular momentum
+        h_vec = np.cross(self.r_vec, self.v_vec, axis=0)
+        h = np.linalg.norm(h_vec, axis=0)
+
+        # Eccentricity
+        e_vec = (np.cross(self.v_vec, h_vec, axis=0) / mu) - (self.r_vec / self.r_mag)
+        e = np.linalg.norm(e_vec, axis=0)
+        e_uvec = e_vec / e
+
+        # Inclination
+        inc = np.arccos(h_vec[2] / h)
+
+        # N vector
+        _z_vec = np.array(
+            [np.zeros_like(self.x), np.zeros_like(self.y), np.ones_like(self.z)]
+        )
+        N_vec = np.cross(_z_vec, h_vec, axis=0)
+        Nxy = np.sqrt(N_vec[0] * N_vec[0] + N_vec[1] * N_vec[1])
+        N_uvec = N_vec / Nxy
+
+        # RAAN
+        raan = np.arctan2(N_vec[1] / Nxy, N_vec[0] / Nxy)
+
+        # Argument of periapsis
+        sign_aop_condition = np.sum(np.cross(N_uvec, e_vec, axis=0) * h_vec, axis=0) > 0
+        sign_aop = 2 * sign_aop_condition - 1
+        aop = sign_aop * np.arccos(np.sum(e_uvec * N_uvec, axis=0))
+
+        # True anomaly
+        sign_ta_condition = (
+            np.sum(np.cross(e_vec, self.r_vec, axis=0) * h_vec, axis=0) > 0
+        )
+        sign_ta = 2 * sign_ta_condition - 1
+        ta = sign_ta * np.arccos(np.sum(self.r_vec * e_uvec / self.r_mag, axis=0))
+
+        return KeplerianState(a, e, inc, raan, aop, ta, deg=False)
 
 
 class CartesianStateDerivative[T: (Double, Vector)](GenericState):
@@ -388,7 +524,6 @@ class CartesianStateDerivative[T: (Double, Vector)](GenericState):
         self.q6 += other.q6
 
     def __repr__(self) -> str:
-
         return (
             "Cartesian state derivative\n"
             "---------------------------------\n"
@@ -439,7 +574,6 @@ class KeplerianState[T: (Double, Vector)](GenericState):
         deg: bool = True,
         wrap: bool = True,
     ) -> None:
-
         super().__init__(a, e, i, raan, aop, ta)
 
         if deg:
@@ -500,8 +634,27 @@ class KeplerianState[T: (Double, Vector)](GenericState):
         out: Any = np.rad2deg(self.ta)
         return out
 
-    def __sub__(self, other: Self | Double | int) -> Self:
+    @property
+    def E(self) -> T:
+        """Eccentric anomaly"""
+        out: Any = 2.0 * np.arctan2(
+            np.sqrt(1.0 - self.e) * np.sin(0.5 * self.ta),
+            np.sqrt(1.0 + self.e) * np.cos(0.5 * self.ta),
+        )
+        return out
 
+    @property
+    def M(self) -> T:
+        """Mean anomaly"""
+        out: Any = self.E - self.e * np.sin(self.E)
+        return out
+
+    def period(self, mu: Double) -> T:
+        """Orbital period"""
+        out: Any = 2.0 * np.pi * np.sqrt(self.a * self.a * self.a / mu)
+        return out
+
+    def __sub__(self, other: Self | Double | int) -> Self:
         print(
             "WARNING: Keplerian state subtraction is not properly tested\n"
             "It might produce unexpected results"
@@ -520,7 +673,6 @@ class KeplerianState[T: (Double, Vector)](GenericState):
         )
 
     def __repr__(self) -> str:
-
         return (
             "Keplerian state vector\n"
             "----------------------\n"
@@ -531,6 +683,56 @@ class KeplerianState[T: (Double, Vector)](GenericState):
             f"AoP: {self.aop}\n"
             f"TA: {self.ta}"
         )
+
+    def as_cartesian(self, mu: Double) -> "CartesianState":
+        """Conversion to cartesian state vector
+
+        Algorithm: Practical astrodynamics slides
+
+        :param mu: Gravitational parameter of central body [m^3/s^2]
+        """
+
+        # Auxiliary trigonometric relations
+        cos_Omega = np.cos(self.raan)
+        sin_Omega = np.sin(self.raan)
+        cos_omega = np.cos(self.aop)
+        sin_omega = np.sin(self.aop)
+        cos_i = np.cos(self.i)
+        sin_i = np.sin(self.i)
+        cos_theta = np.cos(self.ta)
+        sin_theta = np.sin(self.ta)
+
+        l1 = cos_Omega * cos_omega - sin_Omega * sin_omega * cos_i
+        l2 = -cos_Omega * sin_omega - sin_Omega * cos_omega * cos_i
+        m1 = sin_Omega * cos_omega + cos_Omega * sin_omega * cos_i
+        m2 = -sin_Omega * sin_omega + cos_Omega * cos_omega * cos_i
+        n1 = sin_omega * sin_i
+        n2 = cos_omega * sin_i
+
+        # Orbital radius
+        r = self.a * (1.0 - self.e * self.e) / (1.0 + self.e * cos_theta)
+
+        # Position in orbital plane
+        xi = r * cos_theta
+        eta = r * sin_theta
+
+        # Position in 3D space
+        x = l1 * xi + l2 * eta
+        y = m1 * xi + m2 * eta
+        z = n1 * xi + n2 * eta
+
+        # Angular momentum
+        H = np.sqrt(mu * self.a * (1.0 - self.e * self.e))
+
+        # Velocity
+        common = mu / H
+        e_cos_theta = self.e + cos_theta
+
+        dx = common * (l2 * e_cos_theta - l1 * sin_theta)
+        dy = common * (m2 * e_cos_theta - m1 * sin_theta)
+        dz = common * (n2 * e_cos_theta - n1 * sin_theta)
+
+        return CartesianState(x, y, z, dx, dy, dz)
 
 
 class KeplerianStateDerivative[T: (Double, Vector)](GenericState):
@@ -567,7 +769,6 @@ class KeplerianStateDerivative[T: (Double, Vector)](GenericState):
         dta: T,
         deg: bool = True,
     ) -> None:
-
         super().__init__(da, de, di, draan, daop, dta)
 
         if not deg:
@@ -624,7 +825,6 @@ class KeplerianStateDerivative[T: (Double, Vector)](GenericState):
         )
 
     def __repr__(self) -> str:
-
         return (
             "Keplerian state derivative\n"
             "---------------------------------\n"
