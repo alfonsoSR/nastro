@@ -1,3 +1,3 @@
-from .core import PlotSetup
+from .core import PlotSetup, Mosaic, SingleAxis, DoubleAxis, ParasiteAxis
 
-__all__ = ["PlotSetup"]
+__all__ = ["PlotSetup", "Mosaic", "SingleAxis", "DoubleAxis", "ParasiteAxis"]

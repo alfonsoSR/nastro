@@ -1,17 +1,23 @@
-from dataclasses import dataclass, field
-from nastro.types import Array, Double
+from dataclasses import dataclass
+from nastro.types import Double
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure as mplFigure
+from matplotlib.lines import Line2D
+from matplotlib.collections import PolyCollection
+from matplotlib.container import ErrorbarContainer, BarContainer
 from matplotlib.rcsetup import cycler
-from typing import TypeVar, Sequence, Any
+from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
 
+# TODO: ADD DOCSTRINGS TO PUBLIC METHODS
+# TODO: SUPPORT FOR 3D PLOTS
+# TODO: SUPPORT FOR FANCY PLOTS (EX: POLAR, IMSHOW, ETC.)
 
-SubplotType = TypeVar("SubplotType", bound="Subplot")
 type ArrayLike = np.ndarray | Sequence
+SubplotType = TypeVar("SubplotType", bound="Plot")
 
 color_cycler = cycler(
     color=[
@@ -43,106 +49,51 @@ color_cycler = cycler(
 class PlotSetup:
     """Plot configuration.
 
-    :param figsize: Figure size in inches [(7, 5)]
-    :param rows: Number of rows in the figure [1]
-    :param cols: Number of columns in the figure [1]
-    :param title: Figure title [None]
-    :param axtitle: Axes title [None]
-    :param xlabel: x-axis label [None]
-    :param ylabel: y-axis label [None]
-    :param rlabel: Right axis label [None]
-    :param plabel: Parasite axis label [None]
-    :param zlabel: Vertical axis label (3D) [None]
-    :param legend: Show legend [True]
-    :param xscale: x-axis scale [None]
-    :param yscale: y-axis scale [None]
-    :param rscale: Right axis scale [None]
-    :param pscale: Parasite axis scale [None]
-    :param zscale: Vertical axis scale (3D) [None]
-    :param xlim: x-axis limits [None]
-    :param ylim: y-axis limits [None]
-    :param rlim: Right axis limits [None]
-    :param plim: Parasite axis limits [None]
-    :param zlim: Vertical axis limits (3D) [None]
-    :param grid: Show grid [False]
-    :param show: Show plot [True]
-    :param save: Save plot [False]
-    :param dir: Directory to save plot ["plots"]
-    :param name: Plot filename [""]
+    :param figsize: Figure size in inches
+    :param layout: Layout of the subplots.
+        Possible values: "tight", "constrained", "none" or "compressed"
+    :param title: Figure title
+    :param show: Whether to show the plot or not
+    :param save: Whether to save the plot or not
+    :param dir: Directory to save plot
+    :param name: Plot filename
+    :param subtitle: Subplot title
+    :param xlabel: x-axis label
+    :param ylabel: y-axis label
+    :param rlabel: Right axis label
+    :param plabel: Parasite axis label
+    :param xscale: x-axis scale
+        Possible values: "linear", "log", "symlog", "logit"
+    :param yscale: y-axis scale
+        Possible values: "linear", "log", "symlog", "logit"
+    :param rscale: Right axis scale
+        Possible values: "linear", "log", "symlog", "logit"
+    :param pscale: Parasite axis scale
+        Possible values: "linear", "log", "symlog", "logit"
+    :param xlim: x-axis limits
+    :param ylim: y-axis limits
+    :param rlim: Right axis limits
+    :param plim: Parasite axis limits
+    :param legend: Show legend
+    :param legend_location: Legend location
+        Possible values: "best", "upper right", "upper left", "lower left",
+        "lower right", "right", "center left", "center right", "lower center",
+        "upper center", "center"
+    :param grid: Show grid
     """
 
     # Figure configuration
     figsize: tuple[float, float] = (7, 5)
-    rows: int = 1
-    cols: int = 1
-
-    # Title and labels
-    title: str | None = None
-    axtitle: str | None = None
-    xlabel: str | None = None
-    ylabel: str | None = None
-    rlabel: str | None = None
-    plabel: str | None = None
-    zlabel: str | None = None
-    legend: bool = True
-
-    # Scales
-    xscale: str | None = None
-    yscale: str | None = None
-    rscale: str | None = None
-    pscale: str | None = None
-    zscale: str | None = None
-
-    # Limits
-    xlim: tuple[float, float] | None = None
-    ylim: tuple[float, float] | None = None
-    rlim: tuple[float, float] | None = None
-    plim: tuple[float, float] | None = None
-    zlim: tuple[float, float] | None = None
-
-    # Aesthetics
-    grid: bool = False
-
-    # Save and show configuration
-    show: bool = True
-    save: bool = False
-    dir: str = "plots"
-    name: str = ""
-    path: Path = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.path = Path(self.dir) / self.name
-
-        return None
-
-    def copy(self) -> "PlotSetup":
-        return PlotSetup(**self.__dict__)
-
-
-@dataclass
-class FigureSetup:
-
-    size: tuple[float, float] = (7, 5)
-    grid: str = "a"
     layout: str = "tight"
     title: str | None = None
     show: bool = True
     save: bool = False
-    dir: str = "plots"
-    filename: str = ""
+    dir: str | Path | None = None
+    name: str | None = None
+    path: Path | None = None
 
-    __dir: Path = field(init=False)
-
-    def __post_init__(self) -> None:
-
-        self.__dir = Path(self.dir)
-        return None
-
-
-@dataclass
-class SubplotSetup:
-
-    title: str | None = None
+    # Subplot configuration
+    axtitle: str | None = None
 
     xlabel: str | None = None
     ylabel: str | None = None
@@ -159,18 +110,41 @@ class SubplotSetup:
     rlim: tuple[float, float] | None = None
     plim: tuple[float, float] | None = None
 
-    grid: bool = False
     legend: bool = True
-    legend_loc: str = "best"
+    legend_location: str = "best"
+
+    grid: bool = False
+
+    def __post_init__(self) -> None:
+
+        if self.save:
+            if self.name is None:
+                raise ValueError("Missing a filename to save the plot")
+            if self.dir is None:
+                raise ValueError("Missing a directory to save the plot")
+
+        if self.name is not None:
+            if self.dir is None:
+                raise ValueError("Missing a directory to save the plot")
+            elif isinstance(self.dir, str):
+                self.dir = Path(self.dir)
+
+            self.path = self.dir / self.name
+
+        return None
+
+    def copy(self) -> "PlotSetup":
+        return PlotSetup(**self.__dict__)
 
 
-class Figure:
+class BaseFigure:
 
-    def __init__(self, setup: FigureSetup = FigureSetup()) -> None:
+    def __init__(self, setup: PlotSetup, mosaic: str = "a") -> None:
 
         self.setup = setup
-        self.fig = plt.figure(figsize=self.setup.size, layout=self.setup.layout)
-        __subplots = self.fig.subplot_mosaic(self.setup.grid)
+
+        self.fig = plt.figure(figsize=self.setup.figsize, layout=self.setup.layout)
+        __subplots = self.fig.subplot_mosaic(mosaic)
         self.subplots = iter(__subplots.values())
 
         if self.setup.title is not None:
@@ -178,10 +152,15 @@ class Figure:
 
         return None
 
-    def add_subplot(
-        self, generator: type[SubplotType], setup: SubplotSetup = SubplotSetup()
-    ) -> SubplotType:
 
+class Mosaic(BaseFigure):
+
+    def __init__(self, mosaic: str, setup: PlotSetup = PlotSetup()) -> None:
+        super().__init__(setup, mosaic)
+
+    def add_subplot(
+        self, generator: type[SubplotType], setup: PlotSetup = PlotSetup()
+    ) -> SubplotType:
         return generator(setup, self.fig, next(self.subplots))
 
     def __enter__(self) -> Self:
@@ -189,9 +168,14 @@ class Figure:
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
 
+        if exc_type is not None:
+            plt.close(self.fig)
+            raise exc_type(exc_value).with_traceback(exc_traceback)
+
         if self.setup.save:
-            self.setup.__dir.mkdir(parents=True, exist_ok=True)
-            self.fig.savefig(self.setup.__dir / self.setup.filename)
+            assert isinstance(self.setup.path, Path)
+            self.setup.path.parent.mkdir(parents=True, exist_ok=True)
+            self.fig.savefig(self.setup.path)
 
         if self.setup.show:
             plt.show(block=True)
@@ -200,18 +184,31 @@ class Figure:
         return None
 
 
-class Subplot:
+class Plot(BaseFigure):
 
-    def __init__(self, setup: SubplotSetup, figure: mplFigure, axes: Axes) -> None:
+    def __init__(
+        self,
+        setup: PlotSetup = PlotSetup(),
+        _figure: mplFigure | None = None,
+        _axes: Axes | None = None,
+    ) -> None:
 
-        self.setup = setup
-        self.fig = figure
-        self.ax = axes
-        self.axes_dict: dict[str, Any] = {"left": self.ax}
-        self.color_cycler = iter(color_cycler)
+        if _figure is None and _axes is None:
 
-        if self.setup.title is not None:
-            self.ax.set_title(self.setup.title)
+            self.is_subplot = False
+            super().__init__(setup)
+            self.ax = next(self.subplots)
+
+        elif _figure is not None and _axes is not None:
+            self.is_subplot = True
+            self.setup = setup
+            self.fig = _figure
+            self.ax = _axes
+        else:
+            raise ValueError("Pass both figure and axes or none of them")
+
+        if self.setup.axtitle is not None:
+            self.ax.set_title(self.setup.axtitle)
 
         if self.setup.xlabel is not None:
             self.ax.set_xlabel(self.setup.xlabel)
@@ -229,50 +226,201 @@ class Subplot:
         if self.setup.grid:
             self.ax.grid()
 
+        self.color_cycler = iter(color_cycler)
+        self.axes_dict: dict[str, Axes] = {"left": self.ax}
+        self.lines: dict[str, tuple[str, Line2D]] = {}
+        self.boundaries: dict[Line2D, PolyCollection] = {}
+        # self.error_bars: dict[str, tuple[str, ErrorbarContainer]] = {}
+        self.artists: dict[str, tuple[str, Any]] = {}
+
         return None
 
     def add_line(
         self,
-        x: Array,
-        y: Array | None = None,
+        x: ArrayLike,
+        y: ArrayLike | None = None,
         fmt: str = "-",
+        markersize: float | None = None,
+        color: str | None = None,
         label: str | None = None,
         axis: str = "left",
     ) -> None:
 
         if y is None:
-            self.axes_dict[axis].plot(x, fmt, label=label)
+            (line,) = self.axes_dict[axis].plot(
+                x, fmt, label=label, color=color, markersize=markersize
+            )
         else:
-            self.axes_dict[axis].plot(x, y, fmt, label=label)
+            (line,) = self.axes_dict[axis].plot(
+                x, y, fmt, label=label, color=color, markersize=markersize
+            )
+
+        if label is not None:
+            self.artists[label] = (axis, line)
+            self.lines[label] = (axis, line)
+        else:
+            __number = len(self.lines) + 1
+            self.artists[f"line{__number}"] = (axis, line)
+            self.lines[f"line{__number}"] = (axis, line)
 
         return None
 
     def add_boundary(
         self,
-        limit: Array | Double,
+        limit: ArrayLike | Double,
+        line: str | None = None,
         follow_reference: bool = False,
         alpha: float = 0.2,
-        axis: str = "left",
     ) -> None:
 
-        line = self.axes_dict[axis].get_lines()[-1]
-        x = line.get_xdata()
+        if line is not None:
+            if line not in self.lines.keys():
+                raise ValueError(f"Line {line} not found in the plot")
+            target_axis, target = self.lines[line]
+        else:
+            target_axis, target = list(self.lines.values())[-1]
 
-        if isinstance(limit, Double):
-            limit = limit * np.ones_like(x)
+        x = target.get_xdata()
+        reference = target.get_ydata() if follow_reference else np.zeros_like(x)
+        limit = np.array(limit)
 
-        reference = line.get_ydata() if follow_reference else np.zeros_like(x)
-
-        self.axes_dict[axis].fill_between(
-            x, reference + limit, reference - limit, alpha=alpha, color=line.get_color()
+        boundary = self.axes_dict[target_axis].fill_between(
+            x, reference + limit, reference - limit, alpha=alpha
         )
+
+        self.boundaries[target] = boundary
 
         return None
 
+    def add_errorbar(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        error: ArrayLike,
+        fmt: str = "-",
+        color: str | None = None,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        errorbar = self.axes_dict[axis].errorbar(
+            x, y, yerr=error, fmt=fmt, label=label, color=color
+        )
+
+        if label is not None:
+            # self.error_bars[label] = (axis, errorbar)
+            self.artists[label] = (axis, errorbar)
+        else:
+            __number = len(self.artists) + 1
+            # self.error_bars[f"errorbar{__number}"] = (axis, errorbar)
+            self.artists[f"artist{__number}"] = (axis, errorbar)
+
+        return None
+
+    def add_step(
+        self,
+        x: ArrayLike,
+        y: ArrayLike | None = None,
+        where: Literal["pre", "post", "mid"] = "pre",
+        fmt: str = "-",
+        color: str | None = None,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        if y is None:
+            step = self.axes_dict[axis].step(
+                x, fmt, where=where, label=label, color=color
+            )
+        else:
+            step = self.axes_dict[axis].step(
+                x, y, fmt, where=where, label=label, color=color
+            )
+
+        if label is not None:
+            self.artists[label] = (axis, step)
+        else:
+            __number = len(self.artists) + 1
+            self.artists[f"artist{__number}"] = (axis, step)
+
+        return None
+
+    def add_barplot(
+        self,
+        x: ArrayLike,
+        height: ArrayLike,
+        width: float = 0.8,
+        ticks: ArrayLike | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        bar = self.axes_dict[axis].bar(x, height, width=width, tick_label=ticks)
+        count = len(self.artists) + 1
+        self.artists[f"artist{count}"] = (axis, bar)
+
+        return None
+
+    def add_horizontal_barplot(
+        self,
+        x: ArrayLike,
+        width: ArrayLike,
+        height: float = 0.8,
+        ticks: ArrayLike | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        bar = self.axes_dict[axis].barh(x, width, height=height, tick_label=ticks)
+        count = len(self.artists) + 1
+        self.artists[f"artist{count}"] = (axis, bar)
+
+        return None
+
+    def next_color(self) -> str:
+        try:
+            return next(self.color_cycler)["color"]
+        except StopIteration:
+            self.color_cycler = iter(color_cycler)
+            return next(self.color_cycler)["color"]
+
     def postprocess(self) -> None:
 
-        for line in self.ax.get_lines():
-            line.set_color(next(self.color_cycler)["color"])
+        # Colors
+        for _, artist in self.artists.values():
+
+            if isinstance(artist, Line2D):
+                artist.set_color(self.next_color())
+
+            elif isinstance(artist, ErrorbarContainer):
+                color = self.next_color()
+                artist[0].set_color(color)
+                for tick in artist[2]:
+                    tick.set_color(color)
+
+            elif isinstance(artist, BarContainer):
+                for bar in artist:
+                    bar.set_color(self.next_color())
+
+            elif isinstance(artist, list):
+                if isinstance(artist[0], Line2D):
+                    color = self.next_color()
+                    for line in artist:
+                        line.set_color(color)
+                else:
+                    raise ValueError(f"Unknown artist type")
+            else:
+                print(f"Unknown artist type: {artist.__name__}")
+
+        for line, boundary in self.boundaries.items():
+            boundary.set_color(line.get_color())
+
+        # Legend
+        __handles = []
+        for axis in self.axes_dict.values():
+            for handle in axis.get_legend_handles_labels()[0]:
+                __handles.append(handle)
+        if self.setup.legend and len(__handles) > 0:
+            last_axis = list(self.axes_dict.values())[-1]
+            last_axis.legend(loc=self.setup.legend_location, handles=__handles)
 
         return None
 
@@ -283,358 +431,89 @@ class Subplot:
 
         self.postprocess()
 
-        __handles = []
-        for axis in self.axes_dict.values():
-            for line in axis.get_lines():
-                __handles.append(line)
+        if "right" in self.axes_dict.keys():
+            if len(self.axes_dict["right"].get_lines()) > 1:
+                raise ValueError("Attempted to plot multiple lines on the right axis")
+            line = self.axes_dict["right"].get_lines()[-1]
+            self.axes_dict["right"].yaxis.label.set_color(line.get_color())
 
-        if self.setup.legend and len(__handles) > 0:
+        if "parasite" in self.axes_dict.keys():
+            if len(self.axes_dict["parasite"].get_lines()) > 1:
+                raise ValueError(
+                    "Attempted to plot multiple lines on the parasite axis"
+                )
+            line = self.axes_dict["parasite"].get_lines()[-1]
+            self.axes_dict["parasite"].yaxis.label.set_color(line.get_color())
 
-            last_axis = list(self.axes_dict.values())[-1]
-            last_axis.legend(loc=self.setup.legend_loc, handles=__handles)
+        if self.is_subplot:
+            return None
+
+        if self.setup.save:
+            assert isinstance(self.setup.path, Path)
+            self.setup.path.parent.mkdir(parents=True, exist_ok=True)
+            self.fig.savefig(self.setup.path)
+
+        if self.setup.show:
+            plt.show(block=True)
+
+        plt.close(self.fig)
 
         return None
 
 
-# class BasePlot:
-#     def __init__(self, setup: PlotSetup = PlotSetup(), _fig=None, _ax=None) -> None:
-#         self.COLOR_CYCLE = iter(
-#             [
-#                 "#1f77b4",
-#                 "#aec7e8",
-#                 "#ff7f0e",
-#                 "#ffbb78",
-#                 "#2ca02c",
-#                 "#98df8a",
-#                 "#d62728",
-#                 "#ff9896",
-#                 "#9467bd",
-#                 "#c5b0d5",
-#                 "#8c564b",
-#                 "#c49c94",
-#                 "#e377c2",
-#                 "#f7b6d2",
-#                 "#7f7f7f",
-#                 "#c7c7c7",
-#                 "#bcbd22",
-#                 "#dbdb8d",
-#                 "#17becf",
-#                 "#9edae5",
-#             ]
-#         )
+class SingleAxis(Plot):
+    pass
 
-#         self.setup: PlotSetup = setup
 
-#         # Create figure and left axis
-#         if _fig is None and _ax is None:
-#             self.fig, self.ax = plt.subplots(
-#                 figsize=self.setup.figsize,
-#                 layout="tight",
-#             )
-#         elif _fig is not None and _ax is not None:
-#             self.fig = _fig
-#             self.ax = _ax
-#         else:
-#             raise ValueError("Provide both figure and axis or none of them")
+class DoubleAxis(Plot):
 
-#         # Set title and labels
-#         if self.setup.title is not None:
-#             self.fig.suptitle(
-#                 self.setup.title,
-#                 fontsize="x-large",
-#             )
+    def __init__(
+        self,
+        setup: PlotSetup = PlotSetup(),
+        _figure: mplFigure | None = None,
+        _axes: Axes | None = None,
+    ) -> None:
 
-#         if self.setup.axtitle is not None:
-#             self.ax.set_title(self.setup.axtitle)
+        super().__init__(setup, _figure, _axes)
 
-#         if self.setup.xlabel is not None:
-#             self.ax.set_xlabel(self.setup.xlabel)
-#         if self.setup.xscale is not None:
-#             self.ax.set_xscale(self.setup.xscale)
-#         if self.setup.xlim is not None:
-#             self.ax.set_xlim(self.setup.xlim)
+        # Add right axis
+        self.right = self.ax.twinx()
+        assert isinstance(self.right, Axes)
+        self.axes_dict["right"] = self.right
 
-#         if self.setup.ylabel is not None:
-#             self.ax.set_ylabel(self.setup.ylabel)
-#         if self.setup.yscale is not None:
-#             self.ax.set_yscale(self.setup.yscale)
-#         if self.setup.ylim is not None:
-#             self.ax.set_ylim(self.setup.ylim)
+        if self.setup.rlabel is not None:
+            self.right.set_ylabel(self.setup.rlabel)
+        self.right.set_yscale(self.setup.rscale)
+        if self.setup.rlim is not None:
+            self.right.set_ylim(self.setup.rlim)
 
-#         self.path: str = ""
+        return None
 
-#         return None
 
-#     def _formatter(self, x, pos):
-#         if x == 0.0:
-#             return f"{x:.0f}"
-#         elif (np.abs(x) > 0.01) and (np.abs(x) < 1e2):
-#             return f"{x:.1f}"
-#         else:
-#             a, b = f"{x:.0e}".split("e")
-#             bsign = "-" if a[0] == "-" else ""
-#             esign = "-" if b[0] == "-" else ""
-#             exp = int(b[1:])
-#             n = int(a[0]) if bsign == "" else int(a[1])
-#             return f"{bsign}{n}e{esign}{exp}"
-#             return f"${bsign}{n}" + r"\cdot 10^{" + f"{esign}{exp}" + r"}$"
+class ParasiteAxis(DoubleAxis):
 
-#     def _postprocess(self) -> None:
-#         for line in self.ax.get_lines():
-#             line.set_color(next(self.COLOR_CYCLE))
+    def __init__(
+        self,
+        setup: PlotSetup = PlotSetup(),
+        _figure: mplFigure | None = None,
+        _axes: Axes | None = None,
+    ) -> None:
 
-#         return None
+        super().__init__(setup, _figure, _axes)
 
-#     def postprocess(self) -> None:
-#         self._postprocess()
+        # Add parasite axis
+        self.parax = self.ax.twinx()
+        assert isinstance(self.parax, Axes)
+        self.parax.spines.right.set_position(("axes", 1.13))
+        self.axes_dict["parasite"] = self.parax
 
-#         # self.ax.yaxis.set_major_formatter(self._formatter)
+        if self.setup.plabel is not None:
+            self.parax.set_ylabel(self.setup.plabel)
+        self.parax.set_yscale(self.setup.pscale)
+        if self.setup.plim is not None:
+            self.parax.set_ylim(self.setup.plim)
 
-#         labels = self.ax.get_legend_handles_labels()[1]
-#         if self.setup.legend and len(labels) > 0:
-#             self.ax.legend()
-
-#         if self.setup.grid:
-#             self.ax.grid()
-
-#         if self.setup.save:
-#             Path(self.setup.dir).mkdir(parents=True, exist_ok=True)
-#             self.path = f"{self.setup.dir}/{self.setup.name}"
-#             self.fig.savefig(self.path)
-
-#         if self.setup.show:
-#             plt.show(block=True)
-#             plt.close(self.fig)
-
-#         return None
-
-#     def _plot(
-#         self,
-#         x: Array,
-#         y: Array,
-#         fmt: str | None = "-",
-#         label: str | None = None,
-#         axis: str | None = None,
-#     ) -> None:
-#         raise NotImplementedError
-
-#     def add_line(
-#         self,
-#         x: Array,
-#         y: Array,
-#         fmt: str | None = "-",
-#         label: str | None = None,
-#         axis: str | None = "left",
-#     ) -> None:
-#         self._plot(x, y, fmt, label=label, axis=axis)
-#         return None
-
-#     def __enter__(self):
-#         return self
-
-#     def __exit__(self, exc_type, exc_value, exc_traceback):
-#         self.postprocess()
-
-#     def __call__(self) -> str:
-#         self.postprocess()
-#         return self.path
-
-
-# class SinglePlot(BasePlot):
-#     def _plot(
-#         self,
-#         x: Array,
-#         y: Array,
-#         fmt: str | None = "-",
-#         label: str | None = None,
-#         axis: str | None = None,
-#     ) -> None:
-#         self.ax.plot(x, y, fmt, label=label)
-#         return None
-
-#     def plot(
-#         self, x: Array, y: Array, fmt: str | None = "-", label: str | None = None
-#     ) -> str:
-#         self._plot(x, y, fmt=fmt, label=label)
-#         return self.__call__()
-
-
-# class DoubleAxis(BasePlot):
-#     def __init__(self, setup: PlotSetup = PlotSetup(), _fig=None, _ax=None) -> None:
-#         setup.right_axis = True
-
-#         super().__init__(setup, _fig, _ax)
-
-#         self.left = self.ax
-#         self.right = self.left.twinx()
-
-#         if self.setup.rlabel is not None:
-#             self.right.set_ylabel(self.setup.rlabel)
-#         if self.setup.rscale is not None:
-#             self.right.set_yscale(self.setup.rscale)
-#         if self.setup.rlim is not None:
-#             self.right.set_ylim(self.setup.rlim)
-
-#         return None
-
-#     def _postprocess(self) -> None:
-#         super()._postprocess()
-
-#         for line in self.right.get_lines():
-#             line.set_color(next(self.COLOR_CYCLE))
-#         right_line = self.right.get_lines()[0]
-#         self.right.yaxis.label.set_color(right_line.get_color())
-#         self.fig.subplots_adjust(left=0.1, right=0.8)
-#         self.right.yaxis.set_major_formatter(self._formatter)
-
-#         return None
-
-#     def _plot(
-#         self,
-#         x: Array,
-#         y: Array,
-#         fmt: str | None = "-",
-#         label: str | None = None,
-#         axis: str | None = None,
-#     ) -> None:
-#         if axis == "left":
-#             self.ax.plot(x, y, fmt, label=label)
-#         elif axis == "right":
-#             self.right.plot(x, y, fmt, label=label)
-#         else:
-#             raise ValueError("Axis must be either 'left' or 'right'")
-#         return None
-
-#     def plot(self, x: Vector, y_left: Vector, y_right: Vector) -> str:
-#         self._plot(x, y_left, axis="left")
-#         self._plot(x, y_right, axis="right")
-#         return self.__call__()
-
-
-# class ParasiteAxis(BasePlot):
-#     def __init__(self, setup: PlotSetup = PlotSetup(), _fig=None, _ax=None) -> None:
-#         setup.right_axis = True
-#         setup.parasite_axis = True
-
-#         super().__init__(setup, _fig, _ax)
-
-#         self.left = self.ax
-#         self.right = self.left.twinx()
-
-#         if self.setup.rlabel is not None:
-#             self.right.set_ylabel(self.setup.rlabel)
-#         if self.setup.rscale is not None:
-#             self.right.set_yscale(self.setup.rscale)
-#         if self.setup.rlim is not None:
-#             self.right.set_ylim(self.setup.rlim)
-
-#         self.parax = self.left.twinx()
-#         self.parax.spines.right.set_position(("axes", 1.13))
-
-#         if self.setup.plabel is not None:
-#             self.parax.set_ylabel(self.setup.plabel)
-#         if self.setup.pscale is not None:
-#             self.parax.set_yscale(self.setup.pscale)
-#         if self.setup.plim is not None:
-#             self.parax.set_ylim(self.setup.plim)
-
-#         return None
-
-#     def _postprocess(self) -> None:
-#         super()._postprocess()
-
-#         for line in self.right.get_lines():
-#             line.set_color(next(self.COLOR_CYCLE))
-#         right_line = self.right.get_lines()[0]
-#         self.right.yaxis.label.set_color(right_line.get_color())
-#         self.fig.subplots_adjust(left=0.1, right=0.8)
-#         self.right.yaxis.set_major_formatter(self._formatter)
-
-#         for line in self.parax.get_lines():
-#             line.set_color(next(self.COLOR_CYCLE))
-#         parax_line = self.parax.get_lines()[0]
-#         self.parax.yaxis.label.set_color(parax_line.get_color())
-#         self.parax.yaxis.set_major_formatter(self._formatter)
-
-#         return None
-
-#     def _plot(
-#         self,
-#         x: Array,
-#         y: Array,
-#         fmt: str | None = "-",
-#         label: str | None = None,
-#         axis: str | None = None,
-#     ) -> None:
-#         if axis == "left":
-#             self.ax.plot(x, y, fmt, label=label)
-#         elif axis == "right":
-#             self.right.plot(x, y, fmt, label=label)
-#         elif axis == "parax":
-#             self.parax.plot(x, y, fmt, label=label)
-#         else:
-#             raise ValueError("Axis must be either 'left', 'right' or 'parax'")
-#         return None
-
-#     def plot(self, x: Vector, y_left: Vector, y_right: Vector, y_parax: Vector) -> str:
-#         self._plot(x, y_left, axis="left")
-#         self._plot(x, y_right, axis="right")
-#         self._plot(x, y_parax, axis="parax")
-#         return self.__call__()
-
-
-# class MultiPlot:
-#     def __init__(self, setup: PlotSetup) -> None:
-#         self.setup = setup
-
-#         if self.setup.subplots == (1, 1):
-#             raise ValueError("Requesting a single plot with MultiPlot")
-
-#         self.rows, self.cols = self.setup.subplots
-
-#         self.fig, self.axes = plt.subplots(
-#             self.rows, self.cols, figsize=self.setup.figsize, layout="tight"
-#         )
-
-#         self.ax_list = iter(self.axes.ravel())
-
-#         if self.setup.title is not None:
-#             self.fig.suptitle(self.setup.title, fontsize="x-large")
-
-#         self.path = ""
-
-#         return None
-
-#     def __enter__(self):
-#         return self
-
-#     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
-#         self.postprocess()
-#         return None
-
-#     def add_plot(self, setup: PlotSetup = PlotSetup(), type: type[T] = SinglePlot) -> T:
-#         setup.show = False
-#         setup.save = False
-#         setup.legend = True if self.setup.legend else False
-#         return type(setup, _fig=self.fig, _ax=next(self.ax_list))
-
-#     def postprocess(self) -> str:
-#         if self.setup.save:
-#             Path(self.setup.dir).mkdir(parents=True, exist_ok=True)
-#             self.path = f"{self.setup.dir}/{self.setup.name}"
-#             self.fig.savefig(self.path)
-#             if not self.setup.show:
-#                 plt.close(self.fig)
-
-#         if self.setup.show:
-#             plt.show(block=True)
-#             plt.close(self.fig)
-
-#         return self.path
-
-#     def __call__(self) -> str:
-#         self.postprocess()
-#         return self.path
+        return None
 
 
 # class Base3D:

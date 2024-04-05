@@ -4,7 +4,7 @@ import nastro.plots as npt
 def test_copy() -> None:
     """Test copy method of Plot class. [Robust]"""
 
-    plot = npt.PlotSetup(save=True)
+    plot = npt.PlotSetup(dir="outdir", name="prueba")
     plot_copy = plot.copy()
 
     for key in plot.__dict__.keys():
