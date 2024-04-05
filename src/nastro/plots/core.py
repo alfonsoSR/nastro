@@ -153,37 +153,6 @@ class BaseFigure:
         return None
 
 
-class Mosaic(BaseFigure):
-
-    def __init__(self, mosaic: str, setup: PlotSetup = PlotSetup()) -> None:
-        super().__init__(setup, mosaic)
-
-    def add_subplot(
-        self, generator: type[SubplotType], setup: PlotSetup = PlotSetup()
-    ) -> SubplotType:
-        return generator(setup, self.fig, next(self.subplots))
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
-
-        if exc_type is not None:
-            plt.close(self.fig)
-            raise exc_type(exc_value).with_traceback(exc_traceback)
-
-        if self.setup.save:
-            assert isinstance(self.setup.path, Path)
-            self.setup.path.parent.mkdir(parents=True, exist_ok=True)
-            self.fig.savefig(self.setup.path)
-
-        if self.setup.show:
-            plt.show(block=True)
-
-        plt.close(self.fig)
-        return None
-
-
 class Plot(BaseFigure):
 
     def __init__(
@@ -240,7 +209,7 @@ class Plot(BaseFigure):
         x: ArrayLike,
         y: ArrayLike | None = None,
         fmt: str = "-",
-        markersize: float | None = None,
+        markersize: float | None = 3,
         color: str | None = None,
         label: str | None = None,
         axis: str = "left",
@@ -456,7 +425,7 @@ class Plot(BaseFigure):
         if self.setup.show:
             plt.show(block=True)
 
-        plt.close(self.fig)
+        plt.close()
 
         return None
 
@@ -513,6 +482,39 @@ class ParasiteAxis(DoubleAxis):
         if self.setup.plim is not None:
             self.parax.set_ylim(self.setup.plim)
 
+        return None
+
+
+class Mosaic(BaseFigure):
+
+    def __init__(self, mosaic: str, setup: PlotSetup = PlotSetup()) -> None:
+        super().__init__(setup, mosaic)
+
+    def add_subplot(
+        self,
+        generator: type[SubplotType] = SingleAxis,
+        setup: PlotSetup = PlotSetup(),
+    ) -> SubplotType:
+        return generator(setup, self.fig, next(self.subplots))
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
+
+        if exc_type is not None:
+            plt.close(self.fig)
+            raise exc_type(exc_value).with_traceback(exc_traceback)
+
+        if self.setup.save:
+            assert isinstance(self.setup.path, Path)
+            self.setup.path.parent.mkdir(parents=True, exist_ok=True)
+            self.fig.savefig(self.setup.path)
+
+        if self.setup.show:
+            plt.show(block=True)
+
+        plt.close()
         return None
 
 

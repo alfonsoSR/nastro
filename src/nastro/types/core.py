@@ -1,7 +1,8 @@
 import numpy as np
-from typing import Self, Any, Iterator, Sequence
+from typing import Self, Any, Iterator, Sequence, ClassVar
 from numpy.typing import NDArray
 from datetime import datetime
+from pathlib import Path
 
 Double = np.floating | float
 Vector = NDArray[np.floating]
@@ -40,10 +41,13 @@ class Date(datetime):
 class JulianDate[T: (Double, Vector)]:
     """Julian date and time"""
 
-    def __init__(self, jd: T, fr: T) -> None:
+    def __init__(self, jd: T, fr: T | None = None) -> None:
         self.int = jd
         self.mint = jd - 2400000.5
-        self.frac = fr
+        if fr is None:
+            self.frac = 0.0 * self.int
+        else:
+            self.frac = fr
         return None
 
     def __eq__(self, other) -> bool:
@@ -110,6 +114,15 @@ class JulianDate[T: (Double, Vector)]:
             ]
         else:
             raise TypeError("Unexpected type for Julian date")
+
+    @classmethod
+    def load(cls, path: str | Path) -> Self:
+        """Load Julian date from Numpy binary file
+
+        :param path: Path to file to load
+        """
+        data = np.load(path)
+        return cls(data)
 
 
 class GenericState[T: (Double, Vector)]:
@@ -184,7 +197,7 @@ class GenericState[T: (Double, Vector)]:
                 self.q5 + other,
                 self.q6 + other,
             )
-        elif isinstance(other, Self):
+        elif isinstance(other, self.__class__):
             return type(self)(
                 self.q1 + other.q1,
                 self.q2 + other.q2,
@@ -234,7 +247,7 @@ class GenericState[T: (Double, Vector)]:
                 self.q5 * other,
                 self.q6 * other,
             )
-        elif isinstance(other, Self):
+        elif isinstance(other, self.__class__):
             return type(self)(
                 self.q1 * other.q1,
                 self.q2 * other.q2,
@@ -259,14 +272,14 @@ class GenericState[T: (Double, Vector)]:
                 and self.q5 == other
                 and self.q6 == other
             )
-        elif isinstance(other, Self):
+        elif isinstance(other, self.__class__):
             return (
-                self.q1 == other.q1
-                and self.q2 == other.q2
-                and self.q3 == other.q3
-                and self.q4 == other.q4
-                and self.q5 == other.q5
-                and self.q6 == other.q6
+                np.allclose(self.q1, other.q1, rtol=1e-17)
+                and np.allclose(self.q2, other.q2, rtol=1e-17)
+                and np.allclose(self.q3, other.q3, rtol=1e-17)
+                and np.allclose(self.q4, other.q4, rtol=1e-17)
+                and np.allclose(self.q5, other.q5, rtol=1e-17)
+                and np.allclose(self.q6, other.q6, rtol=1e-17)
             )
         else:
             raise TypeError(
@@ -284,7 +297,7 @@ class GenericState[T: (Double, Vector)]:
                 np.append(self.q5, other),
                 np.append(self.q6, other),
             )
-        elif isinstance(other, Self):
+        elif isinstance(other, self.__class__):
             return type(self)(
                 np.append(self.q1, other.q1),
                 np.append(self.q2, other.q2),
@@ -300,6 +313,23 @@ class GenericState[T: (Double, Vector)]:
         return np.array(
             [self.q1, self.q2, self.q3, self.q4, self.q5, self.q6], dtype=np.float64
         )
+
+    def save(self, path: str | Path) -> None:
+        """Save state vector to Numpy binary file
+
+        :param path: Path to generated file
+        """
+        np.save(path, self.asarray())
+        return None
+
+    @classmethod
+    def load(cls, path: str | Path):
+        """Load state vector from Numpy binary file
+
+        :param path: Path to file to load
+        """
+        data = np.load(path)
+        return cls(*data)
 
 
 class CartesianState[T: (Double, Vector)](GenericState):
@@ -571,7 +601,7 @@ class KeplerianState[T: (Double, Vector)](GenericState):
         raan: T,
         aop: T,
         ta: T,
-        deg: bool = True,
+        deg: bool = False,
         wrap: bool = True,
     ) -> None:
         super().__init__(a, e, i, raan, aop, ta)
