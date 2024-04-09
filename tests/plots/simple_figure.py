@@ -34,8 +34,8 @@ if __name__ == "__main__":
 
             b.add_line(x, y, label="sin")
             b.add_line(x, z, label="cos")
-            b.add_boundary(0.5, line="sin", follow_reference=True)
-            b.add_boundary(0.25, line="sin", follow_reference=True, alpha=0.3)
+            b.add_boundary(0.5, line="sin", follow=True)
+            b.add_boundary(0.25, line="sin", follow=True, alpha=0.3)
 
         with fig.add_subplot(pp.SingleAxis, c_setup) as c:
 

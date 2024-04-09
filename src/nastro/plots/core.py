@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from nastro.types import Double
+from nastro.types import Double, Array
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ from matplotlib.figure import Figure as mplFigure
 from matplotlib.lines import Line2D
 from matplotlib.collections import PolyCollection
 from matplotlib.container import ErrorbarContainer, BarContainer
+from matplotlib.image import AxesImage
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
@@ -110,12 +111,35 @@ class PlotSetup:
     rlim: tuple[float, float] | None = None
     plim: tuple[float, float] | None = None
 
+    xticks: ArrayLike | None = None
+    yticks: ArrayLike | None = None
+    rticks: ArrayLike | None = None
+    pticks: ArrayLike | None = None
+    xticks_idx: ArrayLike | None = None
+    yticks_idx: ArrayLike | None = None
+    rticks_idx: ArrayLike | None = None
+    pticks_idx: ArrayLike | None = None
+
+    colorbar: bool = True
+    cbar_label: str | None = None
+    cbar_shrink: float = 1.0
+
     legend: bool = True
     legend_location: str = "best"
 
     grid: bool = False
+    grid_alpha: float = 0.1
 
     def __post_init__(self) -> None:
+
+        if self.xticks is not None and self.xticks_idx is None:
+            self.xticks_idx = np.arange(len(self.xticks))
+        if self.yticks is not None and self.yticks_idx is None:
+            self.yticks_idx = np.arange(len(self.yticks))
+        if self.rticks is not None and self.rticks_idx is None:
+            self.rticks_idx = np.arange(len(self.rticks))
+        if self.pticks is not None and self.pticks_idx is None:
+            self.pticks_idx = np.arange(len(self.pticks))
 
         if self.save:
             if self.name is None:
@@ -193,12 +217,12 @@ class Plot(BaseFigure):
             self.ax.set_ylim(self.setup.ylim)
 
         if self.setup.grid:
-            self.ax.grid()
+            self.ax.grid(alpha=self.setup.grid_alpha)
 
         self.color_cycler = iter(color_cycler)
         self.axes_dict: dict[str, Axes] = {"left": self.ax}
         self.lines: dict[str, tuple[str, Line2D]] = {}
-        self.boundaries: dict[Line2D, PolyCollection] = {}
+        # self.boundaries: dict[Line2D, PolyCollection] = {}
         # self.error_bars: dict[str, tuple[str, ErrorbarContainer]] = {}
         self.artists: dict[str, tuple[str, Any]] = {}
 
@@ -209,55 +233,177 @@ class Plot(BaseFigure):
         x: ArrayLike,
         y: ArrayLike | None = None,
         fmt: str = "-",
-        markersize: float | None = 3,
+        width: float | None = None,
+        markersize: float | None = None,
         color: str | None = None,
+        alpha: float = 1.0,
         label: str | None = None,
         axis: str = "left",
     ) -> None:
+        """Line
+
+        :param x: Data for the x-axis.
+        :param y: Data for the y-axis. If set to None, the data in x will be
+            plotted against a range of integers with the same length.
+        :param fmt: Line style (no color).
+        :param width: Line width.
+        :param markersize: Size of the markers.
+        :param color: Line color as name or hex code.
+        :param alpha: Transparency of the line.
+        :param label: Label to identify the line in the legend.
+        :param axis: Axis to plot the line.
+        """
 
         if y is None:
             (line,) = self.axes_dict[axis].plot(
-                x, fmt, label=label, color=color, markersize=markersize
+                x,
+                fmt,
+                label=label,
+                linewidth=width,
+                markersize=markersize,
+                alpha=alpha,
             )
         else:
             (line,) = self.axes_dict[axis].plot(
-                x, y, fmt, label=label, color=color, markersize=markersize
+                x,
+                y,
+                fmt,
+                label=label,
+                linewidth=width,
+                markersize=markersize,
+                alpha=alpha,
             )
 
-        if label is not None:
-            self.artists[label] = (axis, line)
-            self.lines[label] = (axis, line)
-        else:
-            __number = len(self.lines) + 1
-            self.artists[f"line{__number}"] = (axis, line)
-            self.lines[f"line{__number}"] = (axis, line)
+        name = label if label is not None else f"line{len(self.lines) + 1}"
+        self.lines[name] = (axis, line)
+        self.artists[name] = (axis, (color, line))
 
         return None
 
     def add_boundary(
         self,
-        limit: ArrayLike | Double,
-        line: str | None = None,
-        follow_reference: bool = False,
-        alpha: float = 0.2,
+        limits: ArrayLike | Double,
+        line: str | Literal["last"] | None = "last",
+        follow: bool = False,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
     ) -> None:
+        """Solid boundary
 
-        if line is not None:
-            if line not in self.lines.keys():
-                raise ValueError(f"Line {line} not found in the plot")
-            target_axis, target = self.lines[line]
+        Creates a solid boundary by adding and subtracting a specified limit from
+        a reference, which might be a line or just the horizontal axis.
+
+        :param limits: A number or a sequence of numbers representing the limits
+            of the boundary.
+        :param line: The line to which the boundary will be attached. Can be set
+            to "last" to follow the last line added to the plot, to a string
+            representing the label of the line that is currently in the plot or
+            to None to use the horizontal axis as reference.
+        :param follow: Whether the boundary should follow the reference or not.
+        :param color: Color of the boundary. If set to None, the boundary will
+            have a semi-transparent version of the color of the reference.
+        :param alpha: Transparency of the boundary.
+        :param label: Label to identify the boundary in the legend.
+        :param axis: Axis to plot the boundary.
+        """
+
+        if line is None:
+
+            if isinstance(limits, Double):
+                raise ValueError(
+                    "Failed to generate boundary. Missing information about x-axis"
+                )
+
+            elif isinstance(limits, np.ndarray) or isinstance(limits, Sequence):
+                target_axis = axis
+                target = None
+                limits = np.array(limits)
+                x = np.arange(len(limits))
+                reference = np.zeros_like(x)
+
+            else:
+                raise ValueError(
+                    "Failed to generate boundary."
+                    " Limits must be a number or a sequence"
+                )
+
         else:
-            target_axis, target = list(self.lines.values())[-1]
 
-        x = target.get_xdata()
-        reference = target.get_ydata() if follow_reference else np.zeros_like(x)
-        limit = np.array(limit)
+            if line == "last":
+                target_axis, target = list(self.lines.values())[-1]
+            else:
+                if line not in self.lines.keys():
+                    raise ValueError(
+                        "Failed to generate boundary. "
+                        f"Line {line} not found in the plot"
+                    )
+                target_axis, target = self.lines[line]
+
+            x = target.get_xdata()
+            reference = target.get_ydata() if follow else np.zeros_like(x)
+
+            if isinstance(limits, np.ndarray) or isinstance(limits, Sequence):
+                limits = np.array(limits)
+                if limits.shape != np.array(x).shape:
+                    raise ValueError(
+                        "Failed to generate boundary."
+                        " Limits and line have incompatible shapes."
+                    )
+            else:
+                limits = np.array(limits)
 
         boundary = self.axes_dict[target_axis].fill_between(
-            x, reference + limit, reference - limit, alpha=alpha
+            x,
+            reference + limits,
+            reference - limits,
+            alpha=alpha,
+            label=label,
         )
 
-        self.boundaries[target] = boundary
+        out = (target_axis, (target, color, boundary))
+
+        if label is not None:
+            self.artists[label] = out
+        else:
+            count = len(self.artists) + 1
+            self.artists[f"bound-{count}"] = out
+
+        return None
+
+    def add_vertical_boundary(
+        self,
+        low: Double,
+        high: Double,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+        """Vertical boundary
+
+        Generates a colored region between two vertical lines spanning the entire
+        height of the plot.
+
+        :param low: Lower limit of the boundary.
+        :param high: Upper limit of the boundary.
+        :param color: Color of the boundary.
+        :param alpha: Transparency of the boundary.
+        :param label: Label to identify the boundary in the legend.
+        :param axis: Axis to plot the boundary.
+        """
+
+        limits = self.axes_dict[axis].get_ylim()
+        span = np.linspace(limits[0], limits[1], 10)
+        boundary = self.axes_dict[axis].fill_betweenx(
+            span, low, high, alpha=alpha, label=label
+        )
+        self.axes_dict[axis].set_ylim(limits)
+
+        out = (axis, (None, color, boundary))
+        name = label if label is not None else f"vbound-{len(self.artists) + 1}"
+        self.artists[name] = out
 
         return None
 
@@ -325,7 +471,7 @@ class Plot(BaseFigure):
 
         bar = self.axes_dict[axis].bar(x, height, width=width, tick_label=ticks)
         count = len(self.artists) + 1
-        self.artists[f"artist{count}"] = (axis, bar)
+        self.artists[f"bar-{count}"] = (axis, bar)
 
         return None
 
@@ -340,7 +486,69 @@ class Plot(BaseFigure):
 
         bar = self.axes_dict[axis].barh(x, width, height=height, tick_label=ticks)
         count = len(self.artists) + 1
-        self.artists[f"artist{count}"] = (axis, bar)
+        self.artists[f"hbar-{count}"] = (axis, bar)
+
+        return None
+
+    def add_histogram(
+        self,
+        data: ArrayLike,
+        bins: int = 10,
+        normalize: bool = False,
+        cumulative: bool = False,
+        hist_type: Literal["bar", "step", "stepfilled"] = "bar",
+        align: Literal["left", "mid", "right"] = "mid",
+        label: str | None = None,
+        alpha: float = 0.8,
+        axis: str = "left",
+    ) -> None:
+        """Histogram
+
+        :param data: A sequence of numbers.
+        :param bins: Number of intervals in which the data is divided.
+        :param normalize: If False, the vertical axis represents the number of
+            elements in each bin. If True, the counts are normalized by the total
+            number of elements, so that the vertical axis represents the
+            probability of a number belonging to each interval.
+        :param cumulative: If True, each bin contains the number of elements that
+            are smaller or equal to its upper limit.
+        :param hist_type: Bar plots a sequence of rectangles, step plots the line
+            joining the top of the rectangles, stepfilled plots the same line as
+            step but fills the area below it.
+        :param align: Whether bars will be centered on the left edge, right edge
+            or in the middle of the intervals.
+        :param label: To be shown in the legend to identify the histogram.
+        :param alpha: Transparency of the bars.
+        :param axis: Axis to plot the histogram.
+        """
+
+        _, _, hist = self.axes_dict[axis].hist(
+            data,
+            bins=bins,
+            density=normalize,
+            cumulative=cumulative,
+            histtype=hist_type,
+            align=align,
+            label=label,
+            alpha=alpha,
+        )
+
+        count = len(self.artists) + 1
+        self.artists[f"hist-{count}"] = (axis, hist)
+
+        return None
+
+    def add_image(self, data: Array, cmap: str = "GnBu") -> None:
+
+        if len(data.shape) != 2:
+            raise ValueError("Data must be a 2D array")
+
+        if data.shape[0] != data.shape[1]:
+            raise ValueError("Data must be a square matrix")
+
+        image = self.axes_dict["left"].imshow(data, cmap=cmap)
+        __number = len(self.artists) + 1
+        self.artists[f"artist{__number}"] = ("left", image)
 
         return None
 
@@ -353,11 +561,34 @@ class Plot(BaseFigure):
 
     def postprocess(self) -> None:
 
-        # Colors
-        for _, artist in self.artists.values():
+        # Ticks
+        if self.setup.xticks is not None and self.setup.xticks_idx is not None:
+            self.ax.set_xticks(self.setup.xticks_idx, self.setup.xticks)
+        if self.setup.yticks is not None and self.setup.yticks_idx is not None:
+            self.ax.set_yticks(self.setup.yticks_idx, self.setup.yticks)
+        if "right" in self.axes_dict.keys():
+            if self.setup.rticks is not None and self.setup.rticks_idx is not None:
+                self.axes_dict["right"].set_yticks(
+                    self.setup.rticks_idx, self.setup.rticks
+                )
+        if "parasite" in self.axes_dict.keys():
+            if self.setup.pticks is not None and self.setup.pticks_idx is not None:
+                self.axes_dict["parasite"].set_yticks(
+                    self.setup.pticks_idx, self.setup.pticks
+                )
 
-            if isinstance(artist, Line2D):
-                artist.set_color(self.next_color())
+        # Colors
+        for key, (_, artist) in self.artists.items():
+
+            # Line
+            if isinstance(artist, tuple) and isinstance(artist[-1], Line2D):
+                color, line = artist
+                if color is None:
+                    color = self.next_color()
+                line.set_color(color)
+
+            # if isinstance(artist, Line2D):
+            #     artist.set_color(self.next_color())
 
             elif isinstance(artist, ErrorbarContainer):
                 color = self.next_color()
@@ -366,8 +597,14 @@ class Plot(BaseFigure):
                     tick.set_color(color)
 
             elif isinstance(artist, BarContainer):
-                for bar in artist:
-                    bar.set_color(self.next_color())
+
+                if "hist" in key:
+                    color = self.next_color()
+                    for bar in artist:
+                        bar.set_color(color)
+                else:
+                    for bar in artist:
+                        bar.set_color(self.next_color())
 
             elif isinstance(artist, list):
                 if isinstance(artist[0], Line2D):
@@ -375,12 +612,33 @@ class Plot(BaseFigure):
                     for line in artist:
                         line.set_color(color)
                 else:
-                    raise ValueError(f"Unknown artist type")
-            else:
-                print(f"Unknown artist type: {artist.__name__}")
+                    try:
+                        color = self.next_color()
+                        for item in artist:
+                            item.set_color(color)
+                    except:
+                        raise ValueError(f"Failed to color artist: {type(artist[0])}")
 
-        for line, boundary in self.boundaries.items():
-            boundary.set_color(line.get_color())
+            elif isinstance(artist, AxesImage):
+
+                if not self.setup.colorbar:
+                    continue
+
+                self.fig.colorbar(
+                    artist,
+                    ax=self.ax,
+                    label=self.setup.cbar_label,
+                    shrink=self.setup.cbar_shrink,
+                )
+
+            # Boundary
+            elif isinstance(artist, tuple) and isinstance(artist[-1], PolyCollection):
+                target, color, boundary = artist
+                if color is None:
+                    color = self.next_color() if target is None else target.get_color()
+                boundary.set_color(color)
+            else:
+                print(f"Unknown artist type: {type(artist)}")
 
         # Legend
         __handles = []

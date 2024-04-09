@@ -35,7 +35,7 @@ def test_date2jd() -> None:
     converted_jd = date.as_jd()
 
     assert converted_jd == expected_output
-    assert converted_jd.int == expected_int
+    assert converted_jd.day == expected_int
     assert converted_jd.frac == expected_frac
     assert converted_jd.jd == expected_jd
     assert converted_jd.mint == expected_mint

@@ -42,27 +42,78 @@ class JulianDate[T: (Double, Vector)]:
     """Julian date and time"""
 
     def __init__(self, jd: T, fr: T | None = None) -> None:
-        self.int = jd
-        self.mint = jd - 2400000.5
+
+        self.scalar = False
+        if isinstance(jd, Double):
+            self.scalar = True
+
+        self.q1: Any = np.array([jd], dtype=np.float64).ravel()
         if fr is None:
-            self.frac = 0.0 * self.int
+            self.q2: Any = np.zeros_like(self.q1)
         else:
-            self.frac = fr
+            self.q2: Any = np.array([fr], dtype=np.float64).ravel()
+
         return None
 
-    def __eq__(self, other) -> bool:
-        is_jd = isinstance(other, JulianDate)
-        is_this_jd = (self.int == other.int) and (self.frac == other.frac)
-        return is_jd and is_this_jd
+    @property
+    def size(self) -> int:
+        return self.q1.size
+
+    @property
+    def day(self) -> T:
+        return self.q1[0] if self.scalar else self.q1
+
+    @property
+    def frac(self) -> T:
+        return self.q2[0] if self.scalar else self.q2
+
+    @property
+    def mint(self) -> T:
+        return self.day - 2400000.5
+
+    @property
+    def jd(self) -> T:
+        return self.day + self.frac
 
     @property
     def mjd(self) -> T:
         return self.mint + self.frac
 
-    @property
-    def jd(self) -> T:
-        """Adds integer and fractional parts"""
-        return self.int + self.frac
+    def __eq__(self, other) -> bool:
+        is_jd = isinstance(other, JulianDate)
+        is_this_jd = (self.day == other.day) and (self.frac == other.frac)
+        return is_jd and is_this_jd
+
+    def __repr__(self) -> str:
+
+        limit = 5 if self.size > 5 else self.size
+        out = "Integral:\t"
+        for i in range(limit):
+            out += f"{self.q1[i]:.15e} "
+        if self.size > 5:
+            out += "..."
+        out += "\nFractional:\t"
+        for i in range(limit):
+            out += f"{self.q2[i]:.15e} " if self.q2[i] != 0.0 else "0 "
+        if self.size > 5:
+            out += "..."
+        return out
+
+    def __add__(self, other: Self) -> "JulianDate":
+
+        return JulianDate(self.day + other.day, self.frac + other.frac)
+
+    def __sub__(self, other: Self) -> "JulianDate":
+
+        return JulianDate(self.day - other.day, self.frac - other.frac)
+
+    def __getitem__(self, index: int | slice) -> "JulianDate":
+
+        return JulianDate(self.q1[index], self.q2[index])
+
+    def __iter__(self) -> Iterator["JulianDate"]:
+
+        return iter([self.__getitem__(idx) for idx in range(self.size)])
 
     def as_date(self) -> Date | Sequence[Date]:
         """Conversion to calendar date and time
@@ -70,7 +121,7 @@ class JulianDate[T: (Double, Vector)]:
         Algorithm: Practical astrodynamics slides - 2.17
         """
 
-        jd0 = self.int + 0.5
+        jd0 = self.day + 0.5
         L1 = np.trunc(jd0 + 68569)
         L2 = np.trunc(4 * L1 / 146097)
         L3 = L1 - np.trunc((146097 * L2 + 3) / 4)
@@ -88,7 +139,7 @@ class JulianDate[T: (Double, Vector)]:
         second = np.round(rem * 60)
         micro_second = np.trunc((rem * 60 - second) * 1e6)
 
-        if isinstance(self.int, Double):
+        if isinstance(self.day, Double):
             return Date(
                 int(year),
                 int(month),
@@ -99,7 +150,7 @@ class JulianDate[T: (Double, Vector)]:
                 int(micro_second),
             )
 
-        elif isinstance(self.int, np.ndarray):
+        elif isinstance(self.day, np.ndarray):
             return [
                 Date(
                     int(year[i]),
@@ -110,10 +161,23 @@ class JulianDate[T: (Double, Vector)]:
                     int(second[i]),
                     int(micro_second[i]),
                 )
-                for i in range(self.int.size)
+                for i in range(self.day.size)
             ]
         else:
             raise TypeError("Unexpected type for Julian date")
+
+    def split(self, gap: Double) -> tuple[list[int], list["JulianDate"]]:
+        """Split time series of Julian dates into intervals
+
+        :param gap: Maximum gap between consecutive epochs
+        """
+        idx_list = np.argwhere(np.diff(self.jd) > gap).ravel() + 1
+        passes = []
+        low = 0
+        for idx in idx_list:
+            passes.append(self[low:idx])
+            low = idx
+        return idx_list.tolist(), passes
 
     @classmethod
     def load(cls, path: str | Path) -> Self:
@@ -321,6 +385,20 @@ class GenericState[T: (Double, Vector)]:
         """
         np.save(path, self.asarray())
         return None
+
+    def split(self, idx_list: list[int]) -> list[Self]:
+        """Split time series of state vectors into intervals
+
+        :param idx_list: List of indices to split the state vector
+        """
+
+        print("WARNING: Splitting state vectors is not properly tested\n")
+        low = 0
+        out = []
+        for high in idx_list:
+            out.append(self[low:high])
+            low = high
+        return out
 
     @classmethod
     def load(cls, path: str | Path):
