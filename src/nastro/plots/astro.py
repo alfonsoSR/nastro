@@ -1,4 +1,4 @@
-from ..types.core import KeplerianState, CartesianState, Vector
+from ..types import KeplerianState, CartesianState, Vector
 from .core import PlotSetup, Mosaic
 from ..constants import day
 
@@ -100,6 +100,7 @@ class CompareState(StatePlot):
 
 
 class PlotKeplerianState(PlotState):
+    """Plot components of a keplerian state vector"""
 
     def subplot_setup(self) -> list[PlotSetup]:
 
@@ -127,6 +128,13 @@ class PlotKeplerianState(PlotState):
 
 
 class PlotCartesianState(PlotState):
+    """Plot components of a cartesian state vector
+
+    Parameters
+    -----------
+    setup : PlotSetup
+        Plot setup
+    """
 
     def subplot_setup(self) -> list[PlotSetup]:
 
@@ -154,6 +162,7 @@ class PlotCartesianState(PlotState):
 
 
 class CompareCartesianStates(CompareState):
+    """Plot difference between two sets of cartesian states"""
 
     def subplot_setup(self) -> list[PlotSetup]:
 
@@ -181,6 +190,7 @@ class CompareCartesianStates(CompareState):
 
 
 class CompareKeplerianStates(CompareState):
+    """Plot difference between two sets of keplerian states"""
 
     def subplot_setup(self) -> list[PlotSetup]:
 

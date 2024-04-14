@@ -1,4 +1,4 @@
-from nastro.types import CartesianState, JulianDate
+from nastro.types import CartesianState
 import nastro.constants as nc
 import numpy as np
 

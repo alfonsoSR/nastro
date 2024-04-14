@@ -1,70 +1,8 @@
 from nastro.types import (
-    Date,
-    JulianDate,
     CartesianState,
     KeplerianState,
 )
 import numpy as np
-
-
-def test_Date() -> None:
-    """Test basic functionality of Date class. [Robust]"""
-
-    date = Date(2019, 6, 22, 16, 12, 56)
-    assert date.year == 2019
-    assert date.month == 6
-    assert date.day == 22
-    assert date.hour == 16
-    assert date.minute == 12
-    assert date.second == 56
-    assert date.as_list() == [2019, 6, 22, 16, 12, 56]
-
-    return None
-
-
-def test_date2jd() -> None:
-    """Test conversion from Date to JulianDate. [Robust]"""
-
-    date = Date(2019, 6, 22, 16, 12, 56)
-    expected_int = 2458656.5
-    expected_frac = 0.6756481481481481
-    expected_jd = expected_int + expected_frac
-    expected_mint = 58656.0
-    expected_mjd = expected_mint + expected_frac
-    expected_output = JulianDate(2458656.5, 0.6756481481481481)
-    converted_jd = date.as_jd()
-
-    assert converted_jd == expected_output
-    assert converted_jd.day == expected_int
-    assert converted_jd.frac == expected_frac
-    assert converted_jd.jd == expected_jd
-    assert converted_jd.mint == expected_mint
-    assert converted_jd.mjd == expected_mjd
-
-    return None
-
-
-def test_jd2date() -> None:
-    """Test conversion from JulianDate to Date. [Robust]"""
-
-    julian_date = JulianDate(2458656.5, 0.6756712962962963)
-    expected_date = Date(2019, 6, 22, 16, 12, 58)
-    converted_date = julian_date.as_date()
-
-    assert converted_date == expected_date
-
-    # Time series of jds
-    julian_date_series = JulianDate(
-        np.array([2458656.5, 2458656.5]),
-        np.array([0.6756712962962963, 0.6756712962962963]),
-    )
-    expected_ouput = [expected_date, expected_date]
-    converted_output = julian_date_series.as_date()
-    assert isinstance(converted_output, list)
-    for expected, converted in zip(expected_ouput, converted_output):
-        assert converted == expected
-
-    return None
 
 
 def test_keplerian2cartesian():

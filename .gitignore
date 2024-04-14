@@ -12,3 +12,8 @@ dist
 *.bkp
 *.dtmp
 *.ipynb_checkpoints
+
+# Sphinx
+build
+generated
+*tmp*

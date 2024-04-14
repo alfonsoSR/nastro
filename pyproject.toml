@@ -22,7 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pybind11",
-    "pytest"
+    "pytest",
+    "sphinx"
 ]
 
 [tool.setuptools.packages.find]

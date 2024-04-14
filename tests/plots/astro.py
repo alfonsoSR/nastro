@@ -5,7 +5,7 @@ from nastro.plots.astro import (
     CompareKeplerianStates,
 )
 import nastro.plots as pp
-from nastro.types import Vector, KeplerianState, JulianDate
+from nastro.types import Vector, KeplerianState, JulianDay
 import numpy as np
 from pathlib import Path
 from nastro.catalog import Ganymede
@@ -13,7 +13,7 @@ from nastro.catalog import Ganymede
 if __name__ == "__main__":
 
     datadir = Path(__file__).parents[1] / "data"
-    time = JulianDate.load(datadir / "epochs.npy").jd[:600]
+    time = JulianDay.load(datadir / "epochs.npy").jd[:600]
     kstates = KeplerianState.load(datadir / "kstate.npy")[:600]
     kref = KeplerianState(*kstates[0].asarray())
     setup = pp.PlotSetup(grid=True)

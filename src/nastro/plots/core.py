@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from nastro.types import Double, Array
+from nastro.types import Double, ArrayLike, Vector
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -9,6 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.collections import PolyCollection
 from matplotlib.container import ErrorbarContainer, BarContainer
 from matplotlib.image import AxesImage
+from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
@@ -17,7 +18,6 @@ import numpy as np
 # TODO: SUPPORT FOR 3D PLOTS
 # TODO: SUPPORT FOR FANCY PLOTS (EX: POLAR, IMSHOW, ETC.)
 
-type ArrayLike = np.ndarray | Sequence
 SubplotType = TypeVar("SubplotType", bound="Plot")
 
 color_cycler = cycler(
@@ -48,44 +48,90 @@ color_cycler = cycler(
 
 @dataclass
 class PlotSetup:
-    """Plot configuration.
+    """Plot configuration
 
-    :param figsize: Figure size in inches
-    :param layout: Layout of the subplots.
-        Possible values: "tight", "constrained", "none" or "compressed"
-    :param title: Figure title
-    :param show: Whether to show the plot or not
-    :param save: Whether to save the plot or not
-    :param dir: Directory to save plot
-    :param name: Plot filename
-    :param subtitle: Subplot title
-    :param xlabel: x-axis label
-    :param ylabel: y-axis label
-    :param rlabel: Right axis label
-    :param plabel: Parasite axis label
-    :param xscale: x-axis scale
-        Possible values: "linear", "log", "symlog", "logit"
-    :param yscale: y-axis scale
-        Possible values: "linear", "log", "symlog", "logit"
-    :param rscale: Right axis scale
-        Possible values: "linear", "log", "symlog", "logit"
-    :param pscale: Parasite axis scale
-        Possible values: "linear", "log", "symlog", "logit"
-    :param xlim: x-axis limits
-    :param ylim: y-axis limits
-    :param rlim: Right axis limits
-    :param plim: Parasite axis limits
-    :param legend: Show legend
-    :param legend_location: Legend location
-        Possible values: "best", "upper right", "upper left", "lower left",
-        "lower right", "right", "center left", "center right", "lower center",
-        "upper center", "center"
-    :param grid: Show grid
+    PlotSetup is nastro's approach to plot configuration. It is a dataclass including
+    most of the features one generally specifies when creating a plot in Matplotlib. This includes aspects such as figure size, labels, scales... but also flags to show or save the figure or to display a legend or a grid. The goal is to simplify the process of creating and customizing plots by concentrating all the configuration in a single object, which can then be used as input for all plotting classes.
+
+    Parameters
+    ------------
+    figsize : tuple[float, float], optional
+        Figure size.
+    layout : Literal["tight", "constrained", "none", "compressed"], optional
+        Layout used to calculate spacings and sizes of subplots.
+    title : str, optional
+        Figure title.
+    show : bool, optional
+        Whether to show the plot or not.
+    save : bool, optional
+        Whether to save the plot or not.
+    dir : str | Path, optional
+        Directory to save plot.
+    name : str, optional
+        Plot filename.
+    path: Path, optional
+        Full path to save the plot.
+    axtitle : str, optional
+        Subplot title.
+    xlabel : str, optional
+        x-axis label.
+    ylabel : str, optional
+        y-axis label.
+    rlabel : str, optional
+        Right axis label.
+    plabel : str, optional
+        Parasite axis label.
+    xscale : Literal["linear", "log", "symlog", "logit"], optional
+        x-axis scale.
+    yscale : Literal["linear", "log", "symlog", "logit"], optional
+        y-axis scale.
+    rscale : Literal["linear", "log", "symlog", "logit"], optional
+        Right axis scale.
+    pscale : Literal["linear", "log", "symlog", "logit"], optional
+        Parasite axis scale.
+    xlim : tuple[float, float], optional
+        x-axis limits.
+    ylim : tuple[float, float], optional
+        y-axis limits.
+    rlim : tuple[float, float], optional
+        Right axis limits.
+    plim : tuple[float, float], optional
+        Parasite axis limits.
+    xticks : ArrayLike, optional
+        x-axis ticks.
+    yticks : ArrayLike, optional
+        y-axis ticks.
+    rticks : ArrayLike, optional
+        Right axis ticks.
+    pticks : ArrayLike, optional
+        Parasite axis ticks.
+    xticks_idx : ArrayLike, optional
+        x-axis ticks indices.
+    yticks_idx : ArrayLike, optional
+        y-axis ticks indices.
+    rticks_idx : ArrayLike, optional
+        Right axis ticks indices.
+    pticks_idx : ArrayLike, optional
+        Parasite axis ticks indices.
+    colorbar : bool, optional
+        Show colorbar.
+    cbar_label : str, optional
+        Colorbar label.
+    cbar_shrink : float, optional
+        Colorbar shrink factor.
+    legend : bool, optional
+        Show legend.
+    legend_location : str, optional
+        Legend location. Possible values: "best", "upper right", "upper left", "lower left", "lower right", "right", "center left", "center right", "lower center", "upper center", "center".
+    grid : bool, optional
+        Show grid.
+    grid_alpha : float, optional
+        Grid transparency.
     """
 
     # Figure configuration
     figsize: tuple[float, float] = (7, 5)
-    layout: str = "tight"
+    layout: Literal["tight", "constrained", "none", "compressed"] = "tight"
     title: str | None = None
     show: bool = True
     save: bool = False
@@ -101,10 +147,10 @@ class PlotSetup:
     rlabel: str | None = None
     plabel: str | None = None
 
-    xscale: str = "linear"
-    yscale: str = "linear"
-    rscale: str = "linear"
-    pscale: str = "linear"
+    xscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    yscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    rscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    pscale: Literal["linear", "log", "symlog", "logit"] = "linear"
 
     xlim: tuple[float, float] | None = None
     ylim: tuple[float, float] | None = None
@@ -538,7 +584,7 @@ class Plot(BaseFigure):
 
         return None
 
-    def add_image(self, data: Array, cmap: str = "GnBu") -> None:
+    def add_image(self, data: Vector, cmap: str = "GnBu") -> None:
 
         if len(data.shape) != 2:
             raise ValueError("Data must be a 2D array")
@@ -689,10 +735,13 @@ class Plot(BaseFigure):
 
 
 class SingleAxis(Plot):
+    """A 2D plot with a single vertical axis"""
+
     pass
 
 
 class DoubleAxis(Plot):
+    """A 2D plot with left and right vertical axes"""
 
     def __init__(
         self,
@@ -718,6 +767,7 @@ class DoubleAxis(Plot):
 
 
 class ParasiteAxis(DoubleAxis):
+    """A 2D plot with left, right and parasite vertical axes"""
 
     def __init__(
         self,
@@ -744,6 +794,7 @@ class ParasiteAxis(DoubleAxis):
 
 
 class Mosaic(BaseFigure):
+    """A figure with multiple subplots arranged in a grid"""
 
     def __init__(self, mosaic: str, setup: PlotSetup = PlotSetup()) -> None:
         super().__init__(setup, mosaic)
