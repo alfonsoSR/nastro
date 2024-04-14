@@ -23,7 +23,10 @@ dependencies = [
 dev = [
     "pybind11",
     "pytest",
-    "sphinx"
+    "sphinx",
+    "numpydoc",
+    "sphinx_design"
+
 ]
 
 [tool.setuptools.packages.find]
