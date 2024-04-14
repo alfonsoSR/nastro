@@ -16,7 +16,12 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=1.26.4",
-    "matplotlib>=3.8"
+    "matplotlib>=3.8",
+    "pybind11",
+    "pytest",
+    "sphinx",
+    "numpydoc",
+    "sphinx_design"
 ]
 
 [project.optional-dependencies]
@@ -26,7 +31,6 @@ dev = [
     "sphinx",
     "numpydoc",
     "sphinx_design"
-
 ]
 
 [tool.setuptools.packages.find]

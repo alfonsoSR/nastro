@@ -1,11 +1,11 @@
 """
 Types submodule
-==============================================
+================
 
 .. currentmodule:: nastro.types
 
 Type aliases
----------------
+-------------
 
 =============== ==============================================================
 `Double`        Double precision floating point number
@@ -14,7 +14,7 @@ Type aliases
 =============== ==============================================================
 
 State definition
---------------------
+-----------------
 
 .. autosummary::
     :toctree: generated/
@@ -29,7 +29,7 @@ State definition
     KeplerianStateDerivative
 
 Time
---------------------
+-----
 
 .. autosummary::
     :toctree: generated/
