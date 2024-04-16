@@ -44,7 +44,7 @@ class EOP:
         mjd_int = int(epoch.mjd)
 
         # Find closest epochs in EOP data
-        eop_data = np.load(THIS_FILE.parent / "eop.npy").T
+        eop_data = np.load(THIS_FILE.parent / "sources/eop.npy").T
         idx_lower = np.nonzero(eop_data[3] >= mjd_int)[0][0]
         idx_upper = idx_lower + 1
         lower = eop_data[:, idx_lower]

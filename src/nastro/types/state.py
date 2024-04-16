@@ -776,7 +776,7 @@ class CartesianPosition[T: (Double, Vector)](GenericState):
     :param z: Z coordinate [m]
     """
 
-    def __init__(self, x: T, y: T, z: T) -> None:
+    def __init__(self, x: T, y: T, z: T, *_) -> None:
 
         if isinstance(x, Double):
             null = 0.0
@@ -826,7 +826,7 @@ class CartesianVelocity[T: (Double, Vector)](GenericState):
     :param dz: Z component of the velocity vector [m/s]
     """
 
-    def __init__(self, dx: T, dy: T, dz: T) -> None:
+    def __init__(self, dx: T, dy: T, dz: T, *_) -> None:
 
         if isinstance(dx, Double):
             null = 0.0
