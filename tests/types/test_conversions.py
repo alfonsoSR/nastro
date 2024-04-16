@@ -17,6 +17,7 @@ def test_keplerian2cartesian():
         7.661212333458995e01,
         5.520309419058912e01,
         3.559064425112629e02,
+        deg=True,
     )
 
     expected_cstate = CartesianState(

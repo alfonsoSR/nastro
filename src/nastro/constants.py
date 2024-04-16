@@ -2,6 +2,8 @@ import scipy.constants as sc
 
 # Mathematical constants
 pi = sc.pi
+twopi = 2.0 * pi
+halfpi = 0.5 * pi
 
 # Physical constants
 c = clight = sc.speed_of_light
@@ -11,6 +13,7 @@ G = sc.gravitational_constant
 degree = pi / 180.0
 arcmin = degree / 60.0
 arcsec = arcmin / 60.0
+miliarcsec = arcsec * 1e-3
 
 # Time in seconds
 minute = 60.0

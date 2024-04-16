@@ -38,15 +38,20 @@ class CelestialBody:
     """Properties of celestial bodies
 
     Sources:
-        - GM data: DE440 ephemeris
-        - Earth data: Horizons geophysical data [March 2024]
+    - GM data for planets: https://doi.org/10.3847/1538-3881/abd414
+    - Radii: https://doi.org/10.1007/s10569-017-9805-5
+    - Earth data: Horizons geophysical data [March 2024]
 
     Parameters
     ----------
     name : str
         Name of the celestial body
     R : Double, optional
-        Radius [m]
+        Mean radius [m]
+    Rp : Double, optional
+        Polar radius [m]
+    Re : Double, optional
+        Equatorial radius [m]
     mu : Double, optional
         Gravitational parameter [m^3/s^2]
     j2 : Double, optional
@@ -63,6 +68,8 @@ class CelestialBody:
         self,
         name: str,
         R: Double | None = None,
+        Rp: Double | None = None,
+        Re: Double | None = None,
         mu: Double | None = None,
         j2: Double | None = None,
         j3: Double | None = None,
@@ -71,6 +78,8 @@ class CelestialBody:
     ) -> None:
         self.name = name
         self.__R = R
+        self.__Rp = Rp
+        self.__Re = Re
         self.__mu = mu
         self.__j2 = j2
         self.__j3 = j3
@@ -79,7 +88,7 @@ class CelestialBody:
 
     def __getattr__(self, name: str) -> Double:
 
-        if name in ["R", "mu", "j2", "j3", "T", "a"]:
+        if name in ["R", "Rp", "Re", "mu", "j2", "j3", "T", "a"]:
 
             val = self.__getattribute__(f"_CelestialBody__{name}")
             if val is None:
@@ -92,24 +101,31 @@ class CelestialBody:
 Sun = CelestialBody(
     "Sun",
     mu=1.3271244004127942e20,
+    Re=695700e3,
 )
 
 Mercury = CelestialBody(
     "Mercury",
-    R=None,
+    R=2.4394e6,
+    Re=2440.53e3,
+    Rp=2438.26e3,
     mu=2.2031868551400003e13,
 )
 
 Venus = CelestialBody(
     "Venus",
-    R=None,
+    R=6051.8e3,
+    Re=6051.8e3,
+    Rp=6051.8e3,
     mu=3.2485859200000000e14,
     a=108.210e9,
 )
 
 Earth = CelestialBody(
     "Earth",
-    R=6.37101e6,
+    R=6371.0084e3,
+    Re=6378.1366e3,
+    Rp=6356.7519e3,
     mu=3.9860043550702266e14,
     j2=1.08262545e-3,
     T=3.155814950400000e07,
@@ -118,13 +134,16 @@ Earth = CelestialBody(
 
 Mars = CelestialBody(
     "Mars",
-    R=None,
+    R=3389.50e3,
+    Re=3396.19e3,
     mu=4.282837362069909e13,
 )
 
 Jupiter = CelestialBody(
     "Jupiter",
-    R=71492.0e3,
+    R=69911e3,
+    Re=71492e3,
+    Rp=66854e3,
     mu=1.266865341960128e17,
     j2=14.696572e-3,
     j3=-0.042e-6,
@@ -132,27 +151,28 @@ Jupiter = CelestialBody(
 
 Saturn = CelestialBody(
     "Saturn",
-    R=None,
+    R=58232e3,
+    Re=60268e3,
+    Rp=54364e3,
     mu=3.793120623436167e16,
 )
 
 Uranus = CelestialBody(
     "Uranus",
-    R=None,
+    R=25362e3,
+    Re=25559e3,
+    Rp=24973e3,
     mu=5.793951256527211e15,
 )
 
 Neptune = CelestialBody(
     "Neptune",
-    R=None,
+    R=24622e3,
+    Re=24764e3,
+    Rp=24341e3,
     mu=6.835103145462294e15,
 )
 
-Pluto = CelestialBody(
-    "Pluto",
-    R=None,
-    mu=8.696138177608748e11,
-)
 
 # Moons
 Moon = CelestialBody(
@@ -163,33 +183,33 @@ Moon = CelestialBody(
 
 Phobos = CelestialBody(
     "Phobos",
-    R=None,
+    R=11.08e3,
     mu=7.087546066894452e5,
 )
 
 Deimos = CelestialBody(
     "Deimos",
-    R=None,
+    R=6.2e3,
     mu=9.615569648120313e4,
 )
 
 Io = CelestialBody(
     "Io",
-    R=1821.6e3,
+    R=1821.49e3,
     mu=5.959924010272514e12,
     T=1.5292800000000e05,
 )
 
 Europa = CelestialBody(
     "Europa",
-    R=1565.0e3,
+    R=1560.8e3,
     mu=3.202739815114734e12,
     T=3.0672000000000e05,
 )
 
 Ganymede = CelestialBody(
     "Ganymede",
-    R=2634.0e3,
+    R=2631.2e3,
     mu=9.887819980080976e12,
     T=6.1819200000000e05,
 )
@@ -203,78 +223,90 @@ Callisto = CelestialBody(
 
 Mimas = CelestialBody(
     "Mimas",
-    R=None,
+    R=198.2e3,
     mu=2.503488768152587e9,
 )
 
 Enceladus = CelestialBody(
     "Enceladus",
-    R=None,
+    R=252.1e3,
     mu=7.210366688598896e9,
 )
 
 Tethys = CelestialBody(
     "Tethys",
-    R=None,
+    R=531.0e3,
     mu=4.121352885489587e10,
 )
 
 Dione = CelestialBody(
     "Dione",
-    R=None,
+    R=561.4e3,
     mu=7.311607172482067e10,
 )
 
 Rhea = CelestialBody(
     "Rhea",
-    R=None,
+    R=763.5e3,
     mu=1.539417519146563e11,
 )
 
 Titan = CelestialBody(
     "Titan",
-    R=None,
+    R=2575.0e3,
     mu=8.978137095521046e12,
 )
 
 Ariel = CelestialBody(
     "Ariel",
-    R=None,
+    R=578.9e3,
     mu=8.346344431770477e10,
 )
 
 Umbriel = CelestialBody(
     "Umbriel",
-    R=None,
+    R=584.7e3,
     mu=8.509338094489388e10,
 )
 
 Titania = CelestialBody(
     "Titania",
-    R=None,
+    R=788.9e3,
     mu=2.269437003741248e11,
 )
 
 Oberon = CelestialBody(
     "Oberon",
-    R=None,
+    R=761.4e3,
     mu=2.053234302535623e11,
 )
 
 Miranda = CelestialBody(
     "Miranda",
-    R=None,
+    R=235.8e3,
     mu=4.319516899232100e9,
 )
 
 Triton = CelestialBody(
     "Triton",
-    R=None,
+    R=1352.6e3,
     mu=1.428495462910464e12,
+)
+
+# Dwarf planets
+Pluto = CelestialBody(
+    "Pluto",
+    R=1188.3e3,
+    mu=8.696138177608748e11,
 )
 
 Charon = CelestialBody(
     "Charon",
-    R=None,
+    R=606.0e3,
     mu=1.058799888601881e11,
+)
+
+Ceres = CelestialBody(
+    "Ceres",
+    R=470e3,
 )

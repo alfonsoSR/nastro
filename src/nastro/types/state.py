@@ -3,6 +3,8 @@ from typing import Self, Any, Iterator
 from pathlib import Path
 from .core import Double, Vector
 
+# THIS WORKS WITH THE TESTS BUT DOESN'T HAVE FRAMES (TO BE REPLACED)
+
 
 class GenericState[T: (Double, Vector)]:
     """Base class for state vectors
