@@ -2,6 +2,7 @@ import numpy as np
 from typing import Self, Any, Iterator
 from pathlib import Path
 from .core import Double, Vector
+import traceback
 
 # THIS WORKS WITH THE TESTS BUT DOESN'T HAVE FRAMES (TO BE REPLACED)
 
@@ -20,12 +21,10 @@ class GenericState[T: (Double, Vector)]:
 
     def __init__(self, q1: T, q2: T, q3: T, q4: T, q5: T, q6: T) -> None:
         if isinstance(q1, Double):
-            self.scalar = True
             input = np.array([q1, q2, q3, q4, q5, q6], dtype=np.float64)
             assert len(input.shape) == 1
             assert input.size == 6
         elif isinstance(q1, np.ndarray) and isinstance(q1[0], Double):
-            self.scalar = False
             try:
                 input = np.array([q1, q2, q3, q4, q5, q6], dtype=np.float64)
                 assert len(input.shape) == 2
@@ -54,6 +53,10 @@ class GenericState[T: (Double, Vector)]:
     def size(self) -> int:
         return self.q1.size
 
+    @property
+    def scalar(self) -> bool:
+        return self.size == 1
+
     def __getitem__(self, index: int | slice) -> Self:
         return type(self)(
             self.q1[index],
@@ -65,6 +68,11 @@ class GenericState[T: (Double, Vector)]:
         )
 
     def __iter__(self) -> Iterator[Self]:
+
+        if self.scalar:
+            return iter(
+                [self.q1[0], self.q2[0], self.q3[0], self.q4[0], self.q5[0], self.q6[0]]
+            )
         return iter([self.__getitem__(idx) for idx in range(self.size)])
 
     def __add__(self, other: Self | Double | int) -> Self:
@@ -167,39 +175,37 @@ class GenericState[T: (Double, Vector)]:
                 "Can only check for equality against state vectors and scalars"
             )
 
-    def append(self, other: Self | Double | int) -> Self:
+    def append(self, other: Self | Double | int) -> None:
         if isinstance(other, Double) or isinstance(other, int):
             other = float(other)
-            return type(self)(
-                np.append(self.q1, other),
-                np.append(self.q2, other),
-                np.append(self.q3, other),
-                np.append(self.q4, other),
-                np.append(self.q5, other),
-                np.append(self.q6, other),
-            )
+            self.q1 = np.append(self.q1, other)
+            self.q2 = np.append(self.q2, other)
+            self.q3 = np.append(self.q3, other)
+            self.q4 = np.append(self.q4, other)
+            self.q5 = np.append(self.q5, other)
+            self.q6 = np.append(self.q6, other)
         elif isinstance(other, self.__class__):
-            return type(self)(
-                np.append(self.q1, other.q1),
-                np.append(self.q2, other.q2),
-                np.append(self.q3, other.q3),
-                np.append(self.q4, other.q4),
-                np.append(self.q5, other.q5),
-                np.append(self.q6, other.q6),
-            )
+            self.q1 = np.append(self.q1, other.q1)
+            self.q2 = np.append(self.q2, other.q2)
+            self.q3 = np.append(self.q3, other.q3)
+            self.q4 = np.append(self.q4, other.q4)
+            self.q5 = np.append(self.q5, other.q5)
+            self.q6 = np.append(self.q6, other.q6)
         else:
             raise TypeError("Append is only supported for state vectors and scalars")
 
     def asarray(self) -> Vector:
-        return np.array(
-            [self.q1, self.q2, self.q3, self.q4, self.q5, self.q6], dtype=np.float64
-        )
+        out = np.array([self.q1, self.q2, self.q3, self.q4, self.q5, self.q6])
+        return out.ravel() if self.scalar else out
 
     def save(self, path: str | Path) -> None:
         """Save state vector to Numpy binary file
 
         :param path: Path to generated file
         """
+        if isinstance(path, str):
+            path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         np.save(path, self.asarray())
         return None
 
@@ -218,13 +224,30 @@ class GenericState[T: (Double, Vector)]:
         return out
 
     @classmethod
-    def load(cls, path: str | Path):
+    def load(cls, filename: str | Path, absolute: bool = False) -> Self:
         """Load state vector from Numpy binary file
 
-        :param path: Path to file to load
+        :param path: Path to source file
+        :param absolute: Use absolute path (True) or relative path (False)
         """
-        data = np.load(path)
-        return cls(*data)
+        if not absolute:
+            parent = Path(traceback.extract_stack()[-2].filename).parent
+            path = parent / filename
+        else:
+            path = Path(filename)
+
+        return cls(*np.load(path))
+
+    @classmethod
+    def from_tudat(cls, state_history: dict[Double, list[Double]]) -> Self:
+        """Generate state vector from Tudat state history
+
+        :param state_history: Dictionary with epochs and state components
+        """
+        return cls(*np.array(list(state_history.values())).T)
+
+    def copy(self) -> Self:
+        return type(self)(*self.asarray())
 
 
 class CartesianState[T: (Double, Vector)](GenericState):
@@ -608,6 +631,37 @@ class KeplerianState[T: (Double, Vector)](GenericState):
             f"AoP: {self.aop}\n"
             f"TA: {self.ta}"
         )
+
+    @classmethod
+    def from_tudat(
+        cls, state_history: dict[Double, list[Double]], wrap: bool = True
+    ) -> Self:
+        """Generate state vector from Tudat state history
+
+        :param state_history: Dictionary with epochs and state components
+        """
+        return cls(*np.array(list(state_history.values())).T, wrap=wrap)
+
+    @classmethod
+    def load(
+        cls,
+        filename: str | Path,
+        absolute: bool = False,
+        wrap: bool = True,
+        deg: bool = False,
+    ) -> Self:
+        """Load state vector from Numpy binary file
+
+        :param path: Path to source file
+        :param absolute: Use absolute path (True) or relative path (False)
+        """
+        if not absolute:
+            parent = Path(traceback.extract_stack()[-2].filename).parent
+            path = parent / filename
+        else:
+            path = Path(filename)
+
+        return cls(*np.load(path), wrap=wrap, deg=deg)
 
     def as_cartesian(self, mu: Double) -> "CartesianState":
         """Conversion to cartesian state vector

@@ -9,6 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.collections import PolyCollection
 from matplotlib.container import ErrorbarContainer, BarContainer
 from matplotlib.image import AxesImage
+from matplotlib.patches import Rectangle
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
@@ -172,9 +173,11 @@ class PlotSetup:
 
     legend: bool = True
     legend_location: str = "best"
+    legend_title: str | None = None
+    legend_columns: int = 1
 
     grid: bool = False
-    grid_alpha: float = 0.1
+    grid_alpha: float = 0.15
 
     def __post_init__(self) -> None:
 
@@ -263,7 +266,7 @@ class Plot(BaseFigure):
             self.ax.set_ylim(self.setup.ylim)
 
         if self.setup.grid:
-            self.ax.grid(alpha=self.setup.grid_alpha)
+            self.ax.grid(alpha=self.setup.grid_alpha, which="both")
 
         self.color_cycler = iter(color_cycler)
         self.axes_dict: dict[str, Axes] = {"left": self.ax}
@@ -440,12 +443,16 @@ class Plot(BaseFigure):
         :param axis: Axis to plot the boundary.
         """
 
-        limits = self.axes_dict[axis].get_ylim()
-        span = np.linspace(limits[0], limits[1], 10)
-        boundary = self.axes_dict[axis].fill_betweenx(
-            span, low, high, alpha=alpha, label=label
+        boundary = self.axes_dict[axis].add_artist(
+            Rectangle(
+                (low, -1e20),  # type: ignore
+                high - low,  # type: ignore
+                2e20,
+                alpha=alpha,
+                color=color,
+                label=label,
+            )
         )
-        self.axes_dict[axis].set_ylim(limits)
 
         out = (axis, (None, color, boundary))
         name = label if label is not None else f"vbound-{len(self.artists) + 1}"
@@ -607,6 +614,8 @@ class Plot(BaseFigure):
 
     def postprocess(self) -> None:
 
+        # TODO: REFACTOR COLORING
+
         # Ticks
         if self.setup.xticks is not None and self.setup.xticks_idx is not None:
             self.ax.set_xticks(self.setup.xticks_idx, self.setup.xticks)
@@ -652,6 +661,13 @@ class Plot(BaseFigure):
                     for bar in artist:
                         bar.set_color(self.next_color())
 
+            # Vertical boundary
+            elif isinstance(artist, tuple) and isinstance(artist[2], Rectangle):
+                target, color, boundary = artist
+                if color is None:
+                    color = self.next_color() if target is None else target.get_color()
+                boundary.set_color(color)
+
             elif isinstance(artist, list):
                 if isinstance(artist[0], Line2D):
                     color = self.next_color()
@@ -693,7 +709,12 @@ class Plot(BaseFigure):
                 __handles.append(handle)
         if self.setup.legend and len(__handles) > 0:
             last_axis = list(self.axes_dict.values())[-1]
-            last_axis.legend(loc=self.setup.legend_location, handles=__handles)
+            last_axis.legend(
+                loc=self.setup.legend_location,
+                handles=__handles,
+                title=self.setup.legend_title,
+                ncols=self.setup.legend_columns,
+            )
 
         return None
 
@@ -729,7 +750,7 @@ class Plot(BaseFigure):
         if self.setup.show:
             plt.show(block=True)
 
-        plt.close()
+        plt.close("all")
 
         return None
 
@@ -823,7 +844,7 @@ class Mosaic(BaseFigure):
         if self.setup.show:
             plt.show(block=True)
 
-        plt.close()
+        plt.close("all")
         return None
 
 

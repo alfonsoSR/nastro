@@ -1,20 +1,22 @@
-from ..types import KeplerianState, Vector, time_to_mean_anomaly
+from ..types import KeplerianState, Vector, time_to_mean_anomaly, Double
 from ..types.conversion import eccentric_to_true_anomaly
 import numpy as np
 from .enrke import enrke
+from ..constants import twopi
 
 
-def keplerian_orbit(s0: KeplerianState, epochs: Vector, mu: float) -> KeplerianState:
+def keplerian_orbit(s0: KeplerianState, epochs: Vector, mu: Double) -> KeplerianState:
 
     if not s0.scalar:
         raise ValueError("Initial state must be scalar")
 
     # Initial value of mean anomaly
-    M = time_to_mean_anomaly(epochs, s0.a, mu, s0.M)
+    M = time_to_mean_anomaly(epochs - epochs[0], s0.a, mu, s0.M)
     E = enrke(M, s0.e)
     nu_wrapped = eccentric_to_true_anomaly(E, s0.e)
-    nu = np.unwrap(nu_wrapped, period=360.0)
-    assert np.allclose(nu[0], s0.ta)
+    nu = np.unwrap(nu_wrapped, period=twopi)
+    if not np.allclose(nu[0], s0.ta, atol=1e-15, rtol=0.0):
+        raise ValueError(f"True anomaly unwrapping failed: {nu[0]}, {s0.ta}")
 
     # Generate keplerian state
     base = np.ones_like(epochs, dtype=np.float64)

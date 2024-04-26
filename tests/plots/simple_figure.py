@@ -17,6 +17,10 @@ if __name__ == "__main__":
     figure_setup = pp.PlotSetup(
         figsize=(12, 7),
         title="A simple figure with different types of subplots",
+        save=True,
+        dir=".",
+        name="plots.png",
+        show=False,
     )
     a_setup = pp.PlotSetup(ylabel="left", rlabel="right", plabel="parasite")
     c_setup = pp.PlotSetup(grid=False)

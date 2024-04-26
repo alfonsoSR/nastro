@@ -1,7 +1,7 @@
 from .core import Double, Vector
 from datetime import datetime
 import numpy as np
-from typing import Any, Iterator, Sequence, Self, Union
+from typing import Any, Iterator, Sequence, Self, Union, Literal
 from pathlib import Path
 from ..constants import day
 
@@ -10,8 +10,6 @@ from ..constants import day
 
 class JulianDay[T: (Double, Vector)]:
     """Julian day
-
-
 
     .. warning:: You might pass the integral and fractional parts of the Julian day as a single number, but this will result in a loss of precision due to floating point arithmetic.
 
@@ -22,7 +20,12 @@ class JulianDay[T: (Double, Vector)]:
     NOTE: Accurate to 16 decimal places if integral part ends in 0.5 and to 15 - int(log_10(jd_int)) decimal places otherwise. For example, with (2451545.5, None) as input, the fractional part is accurate to 16 decimal places, but with (2451545.76, None) as input, the fractional part is accurate to 10 decimal places.
     """
 
-    def __init__(self, jd_int: T, jd_frac: T | None = None) -> None:
+    def __init__(
+        self,
+        jd_int: T,
+        jd_frac: T | None = None,
+        ref: Literal["J2000", "MJD"] | None = None,
+    ) -> None:
 
         # Get type
         if isinstance(jd_int, Double):
@@ -45,6 +48,19 @@ class JulianDay[T: (Double, Vector)]:
 
         if q1.size != q2.size:
             raise ValueError("Integral and fractional parts must have the same size")
+
+        # Add reference epoch if necessary
+        if ref is not None:
+
+            if ref == "J2000":
+                q1 += 2451545.0
+            elif ref == "MJD":
+                q1 += 2400000.0
+                q2 += 0.5
+            else:
+                raise ValueError(
+                    "Failed to initialize JulianDay: Invalid reference epoch"
+                )
 
         self.q1, self.q2 = self.__split(q1, q2)
 
@@ -92,6 +108,19 @@ class JulianDay[T: (Double, Vector)]:
     def mjd(self) -> T:
         """Modified Julian date and time"""
         return (self - 2400000.5).jd
+
+    @property
+    def dt(self) -> T:
+        """Days past initial epoch"""
+        return self.jd - self[0].jd
+
+    def __repr__(self) -> str:
+
+        out = "Julian Day\n"
+        out += "-" * len(out) + "\n"
+        out += f"Day: {self.day}\n"
+        out += f"Time: {self.time}\n"
+        return out
 
     def __sub__(self, other: object) -> Union["JulianDay[T]", "DeltaJD[T]"]:
 
@@ -181,7 +210,7 @@ class JulianDay[T: (Double, Vector)]:
         rem = self.time * 24 - hour
         minute = np.trunc(rem * 60)
         rem = rem * 60 - minute
-        second = np.round(rem * 60)
+        second = np.trunc(rem * 60)
         micro_second = np.trunc((rem * 60 - second) * 1e6)
 
         if isinstance(self.day, Double):
@@ -211,14 +240,38 @@ class JulianDay[T: (Double, Vector)]:
         else:
             raise TypeError("Failed to convert to calendar date: Invalid type")
 
+    def save(self, path: str | Path) -> None:
+        """Save Julian date to Numpy binary file
+
+        :param path: Path to file to save
+        """
+        if isinstance(path, str):
+            path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(path, np.array([self.day, self.time]))
+        return None
+
     @classmethod
-    def load(cls, path: str | Path) -> Self:
+    def load(cls, path: str | Path, ref: Literal["J2000", "MJD"] | None = None) -> Self:
         """Load Julian date from Numpy binary file
 
         :param path: Path to file to load
         """
         data = np.load(path)
-        return cls(data)
+        return cls(*data, ref=ref)
+
+    @classmethod
+    def from_tudat(
+        cls,
+        state_history: dict[Double, list[Double]],
+        ref: Literal["J2000", "MJD"] | None = None,
+    ) -> Self:
+        """Load Julian date from TUDAT state history
+
+        :param state_history: Dictionary containing state history data
+        """
+        data = np.array(list(state_history.keys())) / day
+        return cls(data, ref=ref)
 
 
 class DeltaJD[T: (Double, Vector)]:

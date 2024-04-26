@@ -37,5 +37,5 @@ if __name__ == "__main__":
         with fig.add_subplot() as d:
 
             d.add_line(x, y, label="sin")
-            d.add_vertical_boundary(2.0, 4.0, color="green")
+            d.add_vertical_boundary(2.0, 4.0, color="orange")
             d.add_vertical_boundary(1.0, 5.0)
