@@ -88,7 +88,6 @@ html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
     "logo": {"text": "Nastro: Numerical Astrodynamics"},
-    "github_url": "https://github.com/alfonsoSR/nastro",
     "icon_links": [
         {
             "name": "GitHub",
