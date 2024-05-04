@@ -3,6 +3,7 @@ venv
 Makefile
 dist
 *egg-info*
+__state.py
 
 # macOS files
 .DS_Store

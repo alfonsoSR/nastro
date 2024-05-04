@@ -1,7 +1,6 @@
 from nastro.types import CartesianState, KeplerianState
 from pathlib import Path
 import numpy as np
-from nastro.catalog import Ganymede
 
 DATADIR = Path(__file__).parents[1] / "data"
 

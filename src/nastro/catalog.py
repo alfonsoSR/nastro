@@ -32,6 +32,7 @@ Pluto                           Charon
 """
 
 from .types.core import Double
+from . import constants as nc
 
 
 class CelestialBody:
@@ -41,28 +42,52 @@ class CelestialBody:
     - GM data for planets: https://doi.org/10.3847/1538-3881/abd414
     - Radii: https://doi.org/10.1007/s10569-017-9805-5
     - Earth data: Horizons geophysical data [March 2024]
+    - Physical properties of the Moon: https://doi.org/10.1007/s11214-019-0613-y
 
-    Parameters
+    Properties
     ----------
     name : str
         Name of the celestial body
-    R : Double, optional
+    R : Double
         Mean radius [m]
-    Rp : Double, optional
+    Rp : Double
         Polar radius [m]
-    Re : Double, optional
+    Re : Double
         Equatorial radius [m]
-    mu : Double, optional
+    rho : Double
+        Mean density [kg/m^3]
+    mu : Double
         Gravitational parameter [m^3/s^2]
-    j2 : Double, optional
+    j2 : Double
         Second zonal harmonic
-    j3 : Double, optional
+    j3 : Double
         Third zonal harmonic
-    T : Double, optional
+    T : Double
         Orbital period [s]
-    a : Double, optional
+    a : Double
         Semi-major axis [m]
+    mass : Double
+        Mass [kg]
+    volume : Double
+        Volume [m^3]
+    inertia_factor : Double
+        Inertia factor (I/MR^2)
     """
+
+    _attributes = [
+        "R",
+        "Rp",
+        "Re",
+        "mu",
+        "j2",
+        "j3",
+        "T",
+        "a",
+        "mass",
+        "volume",
+        "rho",
+        "inertia_factor",
+    ]
 
     def __init__(
         self,
@@ -75,6 +100,7 @@ class CelestialBody:
         j3: Double | None = None,
         T: Double | None = None,
         a: Double | None = None,
+        inertia_factor: Double | None = None,
     ) -> None:
         self.name = name
         self.__R = R
@@ -85,10 +111,19 @@ class CelestialBody:
         self.__j3 = j3
         self.__T = T
         self.__a = a
+        self.__inertia_factor = inertia_factor
+
+        self.__mass = None if mu is None else mu / nc.G
+        self.__volume = None if R is None else (4.0 / 3.0) * nc.pi * (R**3)
+        self.__rho = (
+            None
+            if self.__mass is None or self.__volume is None
+            else self.__mass / self.__volume
+        )
 
     def __getattr__(self, name: str) -> Double:
 
-        if name in ["R", "Rp", "Re", "mu", "j2", "j3", "T", "a"]:
+        if name in self._attributes:
 
             val = self.__getattribute__(f"_CelestialBody__{name}")
             if val is None:
@@ -96,6 +131,18 @@ class CelestialBody:
             return val
 
         raise AttributeError(f"'{self.name}' has no attribute '{name}'")
+
+    def __repr__(self) -> str:
+
+        out = f"Physical properties: {self.name}\n"
+        out += "-" * len(out) + "\n"
+        for attr in self._attributes:
+            try:
+                val = getattr(self, attr)
+                out += f"{attr}:\t{val:e}\n"
+            except AttributeError:
+                continue
+        return out
 
 
 Sun = CelestialBody(
@@ -179,6 +226,7 @@ Moon = CelestialBody(
     "Moon",
     R=1.7374e6,
     mu=4.9028001184575496e12,
+    inertia_factor=0.3931,
 )
 
 Phobos = CelestialBody(

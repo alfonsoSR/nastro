@@ -1,8 +1,6 @@
-from nastro.types import (
-    CartesianState,
-    KeplerianState,
-)
 import numpy as np
+from nastro import types as nt
+import pytest
 
 
 def test_keplerian2cartesian():
@@ -10,7 +8,7 @@ def test_keplerian2cartesian():
 
     mu_sun = 1.3271276489987138e20
 
-    original_kstate = KeplerianState(
+    original_kstate = nt.KeplerianState(
         1.082073518745249e11,
         6.737204890591715e-03,
         3.394387859410573e00,
@@ -20,7 +18,7 @@ def test_keplerian2cartesian():
         deg=True,
     )
 
-    expected_cstate = CartesianState(
+    expected_cstate = nt.CartesianState(
         -6.561639868572587e10,
         8.498200549242477e10,
         4.953209922912188e09,
@@ -29,8 +27,8 @@ def test_keplerian2cartesian():
         1.309840720051276e03,
     )
 
-    converted_cstate = original_kstate.as_cartesian(mu_sun)
-    converted_kstate = converted_cstate.as_keplerian(mu_sun)
+    converted_cstate = original_kstate.to_cartesian(mu_sun)
+    converted_kstate = converted_cstate.to_keplerian(mu_sun)
 
     # Relative errors
     TOL = 2.2e-15
@@ -50,24 +48,28 @@ def test_keplerian2cartesian():
     assert np.isclose(converted_kstate.ta, original_kstate.ta, rtol=TOL)
 
 
+@pytest.mark.skip
 def test_time_to_mean_anomaly() -> None:
     """Test conversion from time to mean anomaly"""
 
     raise NotImplementedError
 
 
+@pytest.mark.skip
 def test_true_to_eccentric_anomaly() -> None:
     """Test conversion from true to eccentric anomaly"""
 
     raise NotImplementedError
 
 
+@pytest.mark.skip
 def test_eccentric_to_true_anomaly() -> None:
     """Test conversion from eccentric to true anomaly"""
 
     raise NotImplementedError
 
 
+@pytest.mark.skip
 def test_eccentric_to_mean_anomaly() -> None:
     """Test conversion from eccentric to mean anomaly"""
 
