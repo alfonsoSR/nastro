@@ -1,6 +1,4 @@
-from typing import Literal
 from .base import CartesianPropagator
-from ..types import CartesianState, CartesianStateDerivative, Double
 
 
 class RungeKuttaPropagator(CartesianPropagator):

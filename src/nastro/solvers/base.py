@@ -1,11 +1,10 @@
 from ..forces import ForceModel
-from ..types import CartesianState, JulianDay, Double
+from .. import types as nt, constants as nc
 import numpy as np
-from ..constants import day
 from typing import Any
 
 
-class CartesianPropagator[U: (Double, JulianDay)]:
+class CartesianPropagator[U: (nt.Double, nt.JulianDay)]:
     """Base class for cartesian propagators
 
     Parameters
@@ -22,18 +21,23 @@ class CartesianPropagator[U: (Double, JulianDay)]:
     """
 
     def __init__(
-        self, model: ForceModel, t0: U, s0: CartesianState[Double], tend: U, dt: Double
+        self,
+        model: ForceModel,
+        t0: U,
+        s0: nt.CartesianState[nt.Double],
+        tend: U,
+        dt: nt.Double,
     ) -> None:
 
         self.model = model
 
         # Initial and final epoch and step
-        if isinstance(t0, JulianDay) and isinstance(tend, JulianDay):
+        if isinstance(t0, nt.JulianDay) and isinstance(tend, nt.JulianDay):
             self.is_day = True
             self.now_int, self.now_fr = t0.day, t0.time
             self.tend_int, self.tend_fr = tend.day, tend.time
-            dt /= day
-        elif isinstance(t0, Double) and isinstance(tend, Double):
+            dt /= nc.day
+        elif nt.is_double(t0) and nt.is_double(tend):
             self.is_day = False
             self.now_int, self.now_fr = t0, 0.0
             self.tend_int, self.tend_fr = tend, 0.0
@@ -57,7 +61,7 @@ class CartesianPropagator[U: (Double, JulianDay)]:
         self.h_fr = self.h - self.h_int
 
         if self.is_day:
-            self.h_sec = self.h_int * day + self.h_fr * day
+            self.h_sec = self.h_int * nc.day + self.h_fr * nc.day
         else:
             self.h_sec = self.h_int + self.h_fr
 
@@ -71,7 +75,7 @@ class CartesianPropagator[U: (Double, JulianDay)]:
 
         return None
 
-    def _update_epoch(self) -> tuple[Double, Double]:
+    def _update_epoch(self) -> tuple[nt.Double, nt.Double]:
 
         new_fr = self.now_fr + self.h_fr
         int_part = np.trunc(new_fr)
@@ -80,17 +84,17 @@ class CartesianPropagator[U: (Double, JulianDay)]:
 
         return new_int, new_fr
 
-    def _get_steps(self) -> tuple[Double, Double]:
+    def _get_steps(self) -> tuple[nt.Double, nt.Double]:
 
         if self.is_day:
-            return self.h_int * day, self.h_fr * day
+            return self.h_int * nc.day, self.h_fr * nc.day
         else:
             return self.h_int, self.h_fr
 
-    def propagate(self, frac: bool = True) -> tuple[U, CartesianState]:
+    def propagate(self, frac: bool = True) -> tuple[U, nt.CartesianState]:
         """Propagate initial state"""
 
-        out_sol = CartesianState(*self.s.asarray())
+        out_sol = nt.CartesianState(*self.s.asarray)
         out_time = [self.now_int]
         out_time_fr = [self.now_fr]
 
@@ -116,7 +120,7 @@ class CartesianPropagator[U: (Double, JulianDay)]:
         # Generate output
         time_int = np.array(out_time, dtype=np.float64)
         time_fr = np.array(out_time_fr, dtype=np.float64)
-        time: Any = JulianDay(time_int, time_fr) if self.is_day else time_int + time_fr
+        time: Any = nt.JulianDay(time_int, time_fr) if self.is_day else time_int + time_fr
 
         return time, out_sol
 

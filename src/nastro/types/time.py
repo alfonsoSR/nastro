@@ -1,4 +1,4 @@
-from .core import Double, Vector
+from . import core as nt
 from datetime import datetime
 import numpy as np
 from typing import Any, Iterator, Sequence, Self, Union, Literal
@@ -8,7 +8,7 @@ from ..constants import day
 # from ..data.formats import EOP
 
 
-class JulianDay[T: (Double, Vector)]:
+class JulianDay[T: (nt.Double, nt.Vector)]:
     """Julian day
 
     .. warning:: You might pass the integral and fractional parts of the Julian day as a single number, but this will result in a loss of precision due to floating point arithmetic.
@@ -28,8 +28,8 @@ class JulianDay[T: (Double, Vector)]:
     ) -> None:
 
         # Get type
-        if isinstance(jd_int, Double):
-            if jd_frac is not None and not isinstance(jd_frac, Double):
+        if nt.is_double(jd_int):
+            if jd_frac is not None and not nt.is_double(jd_frac):
                 raise ValueError("Failed to initialize JulianDay: Invalid input")
             self.scalar = True
         elif isinstance(jd_int, np.ndarray):
@@ -124,7 +124,7 @@ class JulianDay[T: (Double, Vector)]:
 
     def __sub__(self, other: object) -> Union["JulianDay[T]", "DeltaJD[T]"]:
 
-        if isinstance(other, Double):
+        if nt.is_double(other):
             dI, dF = np.divmod(other, 1.0)
             return JulianDay(self.day - dI, self.time - dF)
         elif isinstance(other, np.ndarray) and other.dtype != np.dtype("O"):
@@ -146,7 +146,7 @@ class JulianDay[T: (Double, Vector)]:
 
     def __add__(self, other: object) -> "JulianDay[T]":
 
-        if isinstance(other, Double):
+        if nt.is_double(other):
             dI, dF = np.divmod(other, 1.0)
             return JulianDay(self.day + dI, self.time + dF)
         elif isinstance(other, np.ndarray) and other.dtype != np.dtype("O"):
@@ -171,7 +171,7 @@ class JulianDay[T: (Double, Vector)]:
         same_time = np.allclose(self.time, other.time, atol=1e-15, rtol=0.0)
         return same_day and same_time
 
-    def split(self, gap: Double) -> tuple[Sequence[int], Sequence[Self]]:
+    def split(self, gap: nt.Double) -> tuple[Sequence[int], Sequence[Self]]:
         """Split time series of Julian dates into intervals
 
         :param gap: Maximum gap between consecutive epochs in the same interval
@@ -213,7 +213,7 @@ class JulianDay[T: (Double, Vector)]:
         second = np.trunc(rem * 60)
         micro_second = np.trunc((rem * 60 - second) * 1e6)
 
-        if isinstance(self.day, Double):
+        if nt.is_double(self.day):
             return CalendarDate(
                 int(year),
                 int(month),
@@ -263,7 +263,7 @@ class JulianDay[T: (Double, Vector)]:
     @classmethod
     def from_tudat(
         cls,
-        state_history: dict[Double, list[Double]],
+        state_history: dict[nt.Double, list[nt.Double]],
         ref: Literal["J2000", "MJD"] | None = None,
     ) -> Self:
         """Load Julian date from TUDAT state history
@@ -274,7 +274,7 @@ class JulianDay[T: (Double, Vector)]:
         return cls(data, ref=ref)
 
 
-class DeltaJD[T: (Double, Vector)]:
+class DeltaJD[T: (nt.Double, nt.Vector)]:
     """Difference between two Julian days
 
     NOTE: You are not supposed to instantiate DeltaJD. You can subtract Double or
@@ -286,9 +286,9 @@ class DeltaJD[T: (Double, Vector)]:
 
     def __init__(self, dI: T, dF: T) -> None:
 
-        # Get type
-        if isinstance(dI, Double):
-            if dF is not None and not isinstance(dF, Double):
+        # Get typea
+        if nt.is_double(dI):
+            if dF is not None and not nt.is_double(dF):
                 raise ValueError("Failed to initialize JulianDay: Invalid input")
             self.scalar = True
         elif isinstance(dI, np.ndarray):

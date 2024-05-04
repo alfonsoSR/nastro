@@ -60,7 +60,6 @@ from .state import (
     KeplerianStateDerivative,
     CartesianPosition,
     CartesianVelocity,
-    SphericalPosition,
 )
 
 from .time import CalendarDate, JulianDay, UTC
@@ -85,7 +84,7 @@ __all__ = [
     "KeplerianStateDerivative",
     "CartesianPosition",
     "CartesianVelocity",
-    "SphericalPosition",
+    # Time
     "CalendarDate",
     "JulianDay",
     "UTC",

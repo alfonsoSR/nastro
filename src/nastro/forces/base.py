@@ -1,5 +1,5 @@
 from typing import Any
-from ..types import CartesianState, CartesianStateDerivative, Double, JulianDay
+from .. import types as nt
 
 
 class Force:
@@ -9,8 +9,8 @@ class Force:
         raise NotImplementedError
 
     def __call__(
-        self, t: Double, s: CartesianState, fr: Double = 0.0
-    ) -> CartesianStateDerivative:
+        self, t: nt.Double, s: nt.CartesianState, fr: nt.Double = 0.0
+    ) -> nt.CartesianStateDerivative:
         raise NotImplementedError
 
 
@@ -24,8 +24,8 @@ class ForceModel:
         return None
 
     def __call__(
-        self, t: Double, s: CartesianState, fr: Double = 0.0
-    ) -> CartesianStateDerivative:
+        self, t: nt.Double, s: nt.CartesianState, fr: nt.Double = 0.0
+    ) -> nt.CartesianStateDerivative:
 
         ds = self.forces[0](t, s, fr)
         if self.n_forces > 1:
