@@ -274,8 +274,12 @@ class GenericState[U: (Double, Vector)]:
         return cls(*np.load(path))
 
     @classmethod
-    def from_tudat(cls, state_history: dict[str, Vector]) -> Self:
-        raise NotImplementedError("Missing conversion from TUDAT state history")
+    def from_tudat(cls, state_history: dict[Double, list[Double]]) -> Self:
+        """Generate state vector from Tudat state history
+
+        :param state_history: Dictionary with epochs and state components
+        """
+        return cls(*np.array(list(state_history.values())).T)
 
     # Frame conversions
     def transform(self) -> Self:
