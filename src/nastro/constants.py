@@ -1,3 +1,32 @@
+"""
+Constants
+==========================================
+
+.. module:: nastro.constants
+
+Physical and mathematical constants and units taken from SciPy.
+
+======================================= ===============================================
+``pi``, ``twopi``, ``halfpi``           Pi and multiples
+``c``                                   speed of light in vacuum
+``G``                                   Newtonian constant of gravitation
+``degree``                              degree in radians
+``arcmin``                              arc minute in radians
+``arcsec``                              arc second in radians
+``miliarcsec``                          milliarcsecond in radians
+``minute``                              one minute in seconds
+``hour``                                one hour in seconds
+``day``                                 one day in seconds
+``year``                                one year (365 days) in seconds
+``julian_year``                         one Julian year (365.25 days) in seconds
+``au``                                  one astronomical unit in meters
+``light_year``                          one light year in meters
+``parsec``                              one parsec in meters
+``km``                                  kilometers in meters
+``kmh``                                 kilometers per hour in meters per second
+======================================= ===============================================
+"""
+
 import scipy.constants as sc
 
 # Mathematical constants
@@ -27,6 +56,7 @@ km = 1e3
 au = astronomical_unit = sc.astronomical_unit
 light_year = sc.light_year
 parsec = sc.parsec
+km = 1e3
 
 # Speed in m/s
 kmh = 1e3 / hour

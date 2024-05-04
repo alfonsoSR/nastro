@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from nastro.types import Double, ArrayLike, Vector
+from .. import types as nt
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ import numpy as np
 
 SubplotType = TypeVar("SubplotType", bound="Plot")
 
-color_cycler = cycler(
+color_cycler = cycler(  # type: ignore
     color=[
         "#1f77b4",
         "#aec7e8",
@@ -98,21 +98,21 @@ class PlotSetup:
         Right axis limits.
     plim : tuple[float, float], optional
         Parasite axis limits.
-    xticks : ArrayLike, optional
+    xticks : nt.Array, optional
         x-axis ticks.
-    yticks : ArrayLike, optional
+    yticks : nt.Array, optional
         y-axis ticks.
-    rticks : ArrayLike, optional
+    rticks : nt.Array, optional
         Right axis ticks.
-    pticks : ArrayLike, optional
+    pticks : nt.Array, optional
         Parasite axis ticks.
-    xticks_idx : ArrayLike, optional
+    xticks_idx : nt.Array, optional
         x-axis ticks indices.
-    yticks_idx : ArrayLike, optional
+    yticks_idx : nt.Array, optional
         y-axis ticks indices.
-    rticks_idx : ArrayLike, optional
+    rticks_idx : nt.Array, optional
         Right axis ticks indices.
-    pticks_idx : ArrayLike, optional
+    pticks_idx : nt.Array, optional
         Parasite axis ticks indices.
     colorbar : bool, optional
         Show colorbar.
@@ -158,14 +158,14 @@ class PlotSetup:
     rlim: tuple[float, float] | None = None
     plim: tuple[float, float] | None = None
 
-    xticks: ArrayLike | None = None
-    yticks: ArrayLike | None = None
-    rticks: ArrayLike | None = None
-    pticks: ArrayLike | None = None
-    xticks_idx: ArrayLike | None = None
-    yticks_idx: ArrayLike | None = None
-    rticks_idx: ArrayLike | None = None
-    pticks_idx: ArrayLike | None = None
+    xticks: nt.Array | None = None
+    yticks: nt.Array | None = None
+    rticks: nt.Array | None = None
+    pticks: nt.Array | None = None
+    xticks_idx: nt.Array | None = None
+    yticks_idx: nt.Array | None = None
+    rticks_idx: nt.Array | None = None
+    pticks_idx: nt.Array | None = None
 
     colorbar: bool = True
     cbar_label: str | None = None
@@ -216,12 +216,14 @@ class BaseFigure:
 
         self.setup = setup
 
-        self.fig = plt.figure(figsize=self.setup.figsize, layout=self.setup.layout)
+        self.fig = plt.figure(  # type: ignore
+            figsize=self.setup.figsize, layout=self.setup.layout
+        )
         __subplots = self.fig.subplot_mosaic(mosaic)
         self.subplots = iter(__subplots.values())
 
         if self.setup.title is not None:
-            self.fig.suptitle(self.setup.title)
+            self.fig.suptitle(self.setup.title)  # type: ignore
 
         return None
 
@@ -279,8 +281,8 @@ class Plot(BaseFigure):
 
     def add_line(
         self,
-        x: ArrayLike,
-        y: ArrayLike | None = None,
+        x: nt.Array,
+        y: nt.Array | None = None,
         fmt: str = "-",
         width: float | None = None,
         markersize: float | None = None,
@@ -331,7 +333,7 @@ class Plot(BaseFigure):
 
     def add_boundary(
         self,
-        limits: ArrayLike | Double,
+        limits: nt.Array | nt.Double,
         line: str | Literal["last"] | None = "last",
         follow: bool = False,
         color: str | None = None,
@@ -360,15 +362,15 @@ class Plot(BaseFigure):
 
         if line is None:
 
-            if isinstance(limits, Double):
+            if nt.is_double(limits):
                 raise ValueError(
                     "Failed to generate boundary. Missing information about x-axis"
                 )
 
-            elif isinstance(limits, np.ndarray) or isinstance(limits, Sequence):
+            elif nt.is_array(limits):
                 target_axis = axis
                 target = None
-                limits = np.array(limits)
+                limits = np.array(limits, dtype=np.float64)
                 x = np.arange(len(limits))
                 reference = np.zeros_like(x)
 
@@ -393,7 +395,7 @@ class Plot(BaseFigure):
             x = target.get_xdata()
             reference = target.get_ydata() if follow else np.zeros_like(x)
 
-            if isinstance(limits, np.ndarray) or isinstance(limits, Sequence):
+            if nt.is_array(limits):
                 limits = np.array(limits)
                 if limits.shape != np.array(x).shape:
                     raise ValueError(
@@ -423,8 +425,8 @@ class Plot(BaseFigure):
 
     def add_vertical_boundary(
         self,
-        low: Double,
-        high: Double,
+        low: nt.Double,
+        high: nt.Double,
         color: str | None = None,
         alpha: float = 0.1,
         label: str | None = None,
@@ -462,9 +464,9 @@ class Plot(BaseFigure):
 
     def add_errorbar(
         self,
-        x: ArrayLike,
-        y: ArrayLike,
-        error: ArrayLike,
+        x: nt.Array,
+        y: nt.Array,
+        error: nt.Array,
         fmt: str = "-",
         color: str | None = None,
         label: str | None = None,
@@ -487,8 +489,8 @@ class Plot(BaseFigure):
 
     def add_step(
         self,
-        x: ArrayLike,
-        y: ArrayLike | None = None,
+        x: nt.Array,
+        y: nt.Array | None = None,
         where: Literal["pre", "post", "mid"] = "pre",
         fmt: str = "-",
         color: str | None = None,
@@ -515,10 +517,10 @@ class Plot(BaseFigure):
 
     def add_barplot(
         self,
-        x: ArrayLike,
-        height: ArrayLike,
+        x: nt.Array,
+        height: nt.Array,
         width: float = 0.8,
-        ticks: ArrayLike | None = None,
+        ticks: nt.Array | None = None,
         axis: str = "left",
     ) -> None:
 
@@ -530,10 +532,10 @@ class Plot(BaseFigure):
 
     def add_horizontal_barplot(
         self,
-        x: ArrayLike,
-        width: ArrayLike,
+        x: nt.Array,
+        width: nt.Array,
         height: float = 0.8,
-        ticks: ArrayLike | None = None,
+        ticks: nt.Array | None = None,
         axis: str = "left",
     ) -> None:
 
@@ -545,7 +547,7 @@ class Plot(BaseFigure):
 
     def add_histogram(
         self,
-        data: ArrayLike,
+        data: nt.Array,
         bins: int = 10,
         normalize: bool = False,
         cumulative: bool = False,
@@ -591,7 +593,7 @@ class Plot(BaseFigure):
 
         return None
 
-    def add_image(self, data: Vector, cmap: str = "GnBu") -> None:
+    def add_image(self, data: nt.Vector, cmap: str = "GnBu") -> None:
 
         if len(data.shape) != 2:
             raise ValueError("Data must be a 2D array")
@@ -894,7 +896,7 @@ class Mosaic(BaseFigure):
 #         self.postprocess()
 
 #     def add_line(
-#         self, x: Array, y: Array, z: Array, fmt: str = "-", label: str | None = None
+#         self, x: nt.Array, y: Array, z: Array, fmt: str = "-", label: str | None = None
 #     ) -> None:
 #         self.ax.plot(x, y, z, fmt, label=label)
 
@@ -933,7 +935,7 @@ class Mosaic(BaseFigure):
 
 # class Plot3D(Base3D):
 #     def plot(
-#         self, x: Array, y: Array, z: Array, fmt: str = "-", label: str | None = None
+#         self, x: nt.Array, y: Array, z: Array, fmt: str = "-", label: str | None = None
 #     ) -> str:
 #         self.add_line(x, y, z, fmt=fmt, label=label)
 #         self.postprocess()

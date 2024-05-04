@@ -11,7 +11,12 @@ THIS_FILE = Path(__file__)
 
 
 class EOP:
-    """Earth Orientation Parameters"""
+    """Earth Orientation Parameters
+
+    Sources
+    -------
+    https://ggos.org/item/earth-orientation-parameter
+    """
 
     def __init__(self, eop_data: Vector, tai_utc: int | None = None) -> None:
 

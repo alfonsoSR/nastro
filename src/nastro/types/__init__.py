@@ -41,7 +41,16 @@ Time
 
 """
 
-from .core import Double, Vector, ArrayLike
+from .core import (
+    Scalar,
+    Double,
+    Vector,
+    Array,
+    is_scalar,
+    is_double,
+    is_vector,
+    is_array,
+)
 
 from .state import (
     GenericState,
@@ -59,9 +68,16 @@ from .time import CalendarDate, JulianDay, UTC
 from .conversion import time_to_mean_anomaly
 
 __all__ = [
+    # Core
+    "Scalar",
     "Double",
     "Vector",
-    "ArrayLike",
+    "Array",
+    "is_scalar",
+    "is_double",
+    "is_vector",
+    "is_array",
+    # State
     "GenericState",
     "CartesianState",
     "CartesianStateDerivative",
