@@ -1,13 +1,13 @@
 from ..types import KeplerianState, CartesianState, Vector
-from .core import PlotSetup, Mosaic
 from ..constants import day
+from . import core as ng
 
 # TODO: ADD DOCSTRINGS
 
 
-class StatePlot(Mosaic):
+class StatePlot(ng.Mosaic):
 
-    def __init__(self, setup: PlotSetup = PlotSetup()) -> None:
+    def __init__(self, setup: ng.PlotSetup = ng.PlotSetup()) -> None:
 
         super().__init__("ab;cd;ef", setup)
 
@@ -26,7 +26,7 @@ class StatePlot(Mosaic):
 
         return None
 
-    def subplot_setup(self) -> list[PlotSetup]:
+    def subplot_setup(self) -> list[ng.PlotSetup]:
         raise NotImplementedError
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
@@ -102,7 +102,7 @@ class CompareState(StatePlot):
 class PlotKeplerianState(PlotState):
     """Plot components of a keplerian state vector"""
 
-    def subplot_setup(self) -> list[PlotSetup]:
+    def subplot_setup(self) -> list[ng.PlotSetup]:
 
         base_setup = self.setup.copy()
 
@@ -136,7 +136,7 @@ class PlotCartesianState(PlotState):
         Plot setup
     """
 
-    def subplot_setup(self) -> list[PlotSetup]:
+    def subplot_setup(self) -> list[ng.PlotSetup]:
 
         base_setup = self.setup.copy()
 
@@ -164,7 +164,7 @@ class PlotCartesianState(PlotState):
 class CompareCartesianStates(CompareState):
     """Plot difference between two sets of cartesian states"""
 
-    def subplot_setup(self) -> list[PlotSetup]:
+    def subplot_setup(self) -> list[ng.PlotSetup]:
 
         base_setup = self.setup.copy()
 
@@ -192,7 +192,7 @@ class CompareCartesianStates(CompareState):
 class CompareKeplerianStates(CompareState):
     """Plot difference between two sets of keplerian states"""
 
-    def subplot_setup(self) -> list[PlotSetup]:
+    def subplot_setup(self) -> list[ng.PlotSetup]:
 
         base_setup = self.setup.copy()
 
@@ -215,3 +215,24 @@ class CompareKeplerianStates(CompareState):
         dta_setup.ylabel = r"$\Delta \theta\ [rad]$"
 
         return [da_setup, de_setup, di_setup, daop_setup, draan_setup, dta_setup]
+
+
+class PlotOrbit(ng.Base3D):
+
+    def add_orbit(
+        self,
+        state: CartesianState,
+        fmt: str = "-",
+        width: float | None = None,
+        markersize: float | None = None,
+        color: str | None = None,
+        alpha: float = 1.0,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        self.add_line(
+            state.x, state.y, state.z, fmt, width, markersize, color, alpha, label, axis
+        )
+
+        return None

@@ -32,12 +32,13 @@ Astrodynamics plots
 
 """
 
-from .core import PlotSetup, Mosaic, SingleAxis, DoubleAxis, ParasiteAxis
+from .core import PlotSetup, Mosaic, SingleAxis, DoubleAxis, ParasiteAxis, Plot3D
 from .astro import (
     PlotCartesianState,
     PlotKeplerianState,
     CompareCartesianStates,
     CompareKeplerianStates,
+    PlotOrbit,
 )
 
 __all__ = [
@@ -46,8 +47,10 @@ __all__ = [
     "SingleAxis",
     "DoubleAxis",
     "ParasiteAxis",
+    "Plot3D",
     "PlotCartesianState",
     "PlotKeplerianState",
     "CompareCartesianStates",
     "CompareKeplerianStates",
+    "PlotOrbit",
 ]

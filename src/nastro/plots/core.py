@@ -11,6 +11,7 @@ from matplotlib.container import ErrorbarContainer, BarContainer
 from matplotlib.image import AxesImage
 from matplotlib.patches import Rectangle
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Line3D
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
@@ -145,25 +146,30 @@ class PlotSetup:
 
     xlabel: str | None = None
     ylabel: str | None = None
+    zlabel: str | None = None
     rlabel: str | None = None
     plabel: str | None = None
 
     xscale: Literal["linear", "log", "symlog", "logit"] = "linear"
     yscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    zscale: Literal["linear", "log", "symlog", "logit"] = "linear"
     rscale: Literal["linear", "log", "symlog", "logit"] = "linear"
     pscale: Literal["linear", "log", "symlog", "logit"] = "linear"
 
     xlim: tuple[float, float] | None = None
     ylim: tuple[float, float] | None = None
+    zlim: tuple[float, float] | None = None
     rlim: tuple[float, float] | None = None
     plim: tuple[float, float] | None = None
 
     xticks: nt.Array | None = None
     yticks: nt.Array | None = None
+    zticks: nt.Array | None = None
     rticks: nt.Array | None = None
     pticks: nt.Array | None = None
     xticks_idx: nt.Array | None = None
     yticks_idx: nt.Array | None = None
+    zticks_idx: nt.Array | None = None
     rticks_idx: nt.Array | None = None
     pticks_idx: nt.Array | None = None
 
@@ -185,6 +191,8 @@ class PlotSetup:
             self.xticks_idx = np.arange(len(self.xticks))
         if self.yticks is not None and self.yticks_idx is None:
             self.yticks_idx = np.arange(len(self.yticks))
+        if self.zticks is not None and self.zticks_idx is None:
+            self.zticks_idx = np.arange(len(self.zticks))
         if self.rticks is not None and self.rticks_idx is None:
             self.rticks_idx = np.arange(len(self.rticks))
         if self.pticks is not None and self.pticks_idx is None:
@@ -848,6 +856,169 @@ class Mosaic(BaseFigure):
 
         plt.close("all")
         return None
+
+
+class Base3D:
+
+    def __init__(self, setup: PlotSetup = PlotSetup()) -> None:
+
+        self.setup = setup
+
+        # Create figure and axis
+        self.fig = plt.figure(figsize=self.setup.figsize)
+        self.ax = self.fig.add_subplot(
+            projection="3d", proj_type="ortho", box_aspect=(1, 1, 1)
+        )
+
+        # Set title and labels
+        if self.setup.title is not None:
+            self.fig.suptitle(self.setup.title)
+
+        if self.setup.xlabel is not None:
+            self.ax.set_xlabel(self.setup.xlabel)
+        if self.setup.xscale is not None:
+            self.ax.set_xscale(self.setup.xscale)
+        if self.setup.xlim is not None:
+            self.ax.set_xlim(self.setup.xlim)
+
+        if self.setup.ylabel is not None:
+            self.ax.set_ylabel(self.setup.ylabel)
+        if self.setup.yscale is not None:
+            self.ax.set_yscale(self.setup.yscale)
+        if self.setup.ylim is not None:
+            self.ax.set_ylim(self.setup.ylim)
+
+        if self.setup.zlabel is not None:
+            self.ax.set_zlabel(self.setup.zlabel)  # type: ignore
+        if self.setup.zscale is not None:
+            self.ax.set_zscale(self.setup.zscale)  # type: ignore
+        if self.setup.zlim is not None:
+            self.ax.set_zlim(self.setup.zlim)  # type: ignore
+
+        self.color_cycler = iter(color_cycler)
+        self.axes_dict: dict[str, Axes] = {"left": self.ax}
+        self.artists: dict[str, tuple[str, Any]] = {}
+
+        return None
+
+    def next_color(self) -> str:
+        try:
+            return next(self.color_cycler)["color"]
+        except StopIteration:
+            self.color_cycler = iter(color_cycler)
+            return next(self.color_cycler)["color"]
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.postprocess()
+
+    def add_line(
+        self,
+        x: nt.Array,
+        y: nt.Array,
+        z: nt.Array,
+        fmt: str = "-",
+        width: float | None = None,
+        markersize: float | None = None,
+        color: str | None = None,
+        alpha: float = 1.0,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+        """Line
+
+        :param x: Data for the x-axis.
+        :param y: Data for the y-axis. If set to None, the data in x will be
+            plotted against a range of integers with the same length.
+        :param fmt: Line style (no color).
+        :param width: Line width.
+        :param markersize: Size of the markers.
+        :param color: Line color as name or hex code.
+        :param alpha: Transparency of the line.
+        :param label: Label to identify the line in the legend.
+        """
+
+        (line,) = self.axes_dict[axis].plot(
+            x,
+            y,
+            z,
+            fmt,
+            label=label,
+            linewidth=width,
+            markersize=markersize,
+            alpha=alpha,
+        )
+
+        name = label if label is not None else f"line{len(self.artists) + 1}"
+        self.artists[name] = (axis, (color, line))
+
+        return None
+
+    def postprocess(self) -> None:
+
+        original_limits = np.array(
+            [
+                self.ax.get_xlim(),
+                self.ax.get_ylim(),
+                self.ax.get_zlim(),  # type: ignore
+            ]
+        ).T
+
+        homogeneous_limits = (np.min(original_limits[0]), np.max(original_limits[1]))
+
+        self.ax.set_xlim(homogeneous_limits)
+        self.ax.set_ylim(homogeneous_limits)
+        self.ax.set_zlim(homogeneous_limits)  # type: ignore
+
+        # Ticks
+        if self.setup.xticks is not None and self.setup.xticks_idx is not None:
+            self.ax.set_xticks(self.setup.xticks_idx, self.setup.xticks)
+        if self.setup.yticks is not None and self.setup.yticks_idx is not None:
+            self.ax.set_yticks(self.setup.yticks_idx, self.setup.yticks)
+
+        # Colors
+        for key, (_, artist) in self.artists.items():
+
+            # Line
+            if isinstance(artist, tuple) and isinstance(artist[-1], Line3D):
+                color, line = artist
+                if color is None:
+                    color = self.next_color()
+                line.set_color(color)
+            else:
+                print(f"Unknown artist type: {type(artist)}")
+
+        # Legend
+        __handles = []
+        for axis in self.axes_dict.values():
+            for handle in axis.get_legend_handles_labels()[0]:
+                __handles.append(handle)
+        if self.setup.legend and len(__handles) > 0:
+            last_axis = list(self.axes_dict.values())[-1]
+            last_axis.legend(
+                loc=self.setup.legend_location,
+                handles=__handles,
+                title=self.setup.legend_title,
+                ncols=self.setup.legend_columns,
+            )
+
+        if self.setup.save:
+            assert isinstance(self.setup.path, Path)
+            self.setup.path.parent.mkdir(parents=True, exist_ok=True)
+            self.fig.savefig(self.setup.path)
+
+        if self.setup.show:
+            plt.show(block=True)
+
+        plt.close("all")
+
+        return None
+
+
+class Plot3D(Base3D):
+    pass
 
 
 # class Base3D:
