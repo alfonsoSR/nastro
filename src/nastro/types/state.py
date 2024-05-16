@@ -102,10 +102,11 @@ class GenericState[U: (Double, Vector)]:
     @property
     def asarray(self) -> Vector:
         """Time series of state vectors as a (6, N) numpy array"""
-        return np.array(
+        out = np.array(
             [self.q1, self.q2, self.q3, self.q4, self.q5, self.q6],
             dtype=np.float64,
         )
+        return out
 
     @staticmethod
     def __wrap_angle(angle: U, limits: tuple[Double, Double] = (0.0, twopi)) -> U:
@@ -217,11 +218,11 @@ class GenericState[U: (Double, Vector)]:
 
         return np.allclose(self.asarray, other.asarray, atol=1e-15, rtol=0.0)
 
-    def append(self, other: Self | Scalar | Vector) -> Self:
+    def append(self, other: Self | Scalar | Vector) -> None:
         """Add state vector to time series"""
 
         if is_scalar(other):
-            return type(self)(*np.append(self.asarray, np.ones((6, 1)) * other, axis=1))
+            values = np.ones((6, 1)) * other
         elif is_vector(other):
             if other.shape[0] != 6:
                 raise ValueError(
@@ -229,14 +230,22 @@ class GenericState[U: (Double, Vector)]:
                 )
             if len(other.shape) == 1:
                 other = other[:, None]
-            return type(self)(*np.append(self.asarray, other, axis=1))
+            values = other
         elif isinstance(other, self.__class__):
-            return type(self)(*np.append(self.asarray, other.asarray, axis=1))
+            values = other.asarray
         else:
             raise TypeError(
                 "Failed to append to state vector. "
                 "Check documentation for supported types."
             )
+
+        self.q1 = np.append(self.q1, values[0], axis=0)
+        self.q2 = np.append(self.q2, values[1], axis=0)
+        self.q3 = np.append(self.q3, values[2], axis=0)
+        self.q4 = np.append(self.q4, values[3], axis=0)
+        self.q5 = np.append(self.q5, values[4], axis=0)
+        self.q6 = np.append(self.q6, values[5], axis=0)
+        return None
 
     def copy(self) -> Self:
         """Return copy of state vector"""
@@ -257,6 +266,7 @@ class GenericState[U: (Double, Vector)]:
         path = cwd / path
 
         # Save output
+        path.parent.mkdir(parents=True, exist_ok=True)
         np.save(path, self.asarray)
 
         return path
@@ -276,7 +286,18 @@ class GenericState[U: (Double, Vector)]:
         path = cwd / path
 
         # Load output
-        return cls(*np.load(path))
+        if path.suffix == ".npy":
+            return cls(*np.load(path))
+        elif path.suffix == ".dat":
+            data = np.loadtxt(path).T
+            if data.shape[0] == 6:
+                return cls(*data)
+            elif data.shape[0] >= 7:
+                return cls(*data[1:7])
+            else:
+                raise ValueError("Failed to load state vector. Invalid data shape.")
+        else:
+            raise ValueError("Failed to load state vector. Invalid file extension.")
 
     @classmethod
     def from_tudat(cls, state_history: dict[Double, list[Double]]) -> Self:
@@ -284,7 +305,7 @@ class GenericState[U: (Double, Vector)]:
 
         :param state_history: Dictionary with epochs and state components
         """
-        return cls(*np.array(list(state_history.values())).T)
+        return cls(*np.array(list(state_history.values())).T[:6])
 
     # Frame conversions
     def transform(self) -> Self:
@@ -323,7 +344,7 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
     @property
     def r_vec(self) -> Vector:
         """Cartesian position vector as numpy array"""
-        return self.asarray[:3]
+        return np.array([self.x, self.y, self.z])
 
     @property
     def r_mag(self) -> U:
@@ -333,7 +354,7 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
     @property
     def v_vec(self) -> Vector:
         """Cartesian velocity vector as numpy array"""
-        return self.asarray[3:]
+        return np.array([self.dx, self.dy, self.dz])
 
     @property
     def v_mag(self) -> U:
@@ -428,12 +449,12 @@ class CartesianStateDerivative[U: (Double, Vector)](GenericState[U]):
     @property
     def v_vec(self) -> Vector:
         """Cartesian velocity vector as numpy array"""
-        return self.asarray[:3]
+        return np.array([self.dx, self.dy, self.dz])
 
     @property
     def a_vec(self) -> Vector:
         """Cartesian acceleration vector as numpy array"""
-        return self.asarray[3:]
+        return np.array([self.ddx, self.ddy, self.ddz])
 
     @property
     def v_mag(self) -> U:

@@ -115,7 +115,7 @@ def test_basic_properties(_type, _input, _properties) -> None:
     [
         (
             nt.CartesianState,
-            np.random.normal(size=(6, 1)),
+            np.random.normal(size=(6,)),
             ["r_vec", "v_vec", "r_mag", "v_mag"],
         ),
         (
@@ -125,7 +125,7 @@ def test_basic_properties(_type, _input, _properties) -> None:
         ),
         (
             nt.CartesianStateDerivative,
-            np.random.normal(size=(6, 1)),
+            np.random.normal(size=(6,)),
             ["v_vec", "a_vec", "v_mag", "a_mag"],
         ),
         (
@@ -144,6 +144,18 @@ def test_vectors_and_magnitudes(_type, _input, _properties) -> None:
     assert np.allclose(getattr(state, vec2), _input[3:])
     assert np.allclose(getattr(state, mag1), np.linalg.norm(_input[:3], axis=0))
     assert np.allclose(getattr(state, mag2), np.linalg.norm(_input[3:], axis=0))
+    if len(_input.shape) == 1:
+        assert state.scalar
+        assert nt.is_double(getattr(state, mag1))
+        assert nt.is_double(getattr(state, mag2))
+        assert getattr(state, vec1).shape == (3,)
+        assert getattr(state, vec2).shape == (3,)
+    else:
+        assert not state.scalar
+        assert getattr(state, mag1).shape == (_input.shape[1],)
+        assert getattr(state, mag2).shape == (_input.shape[1],)
+        assert getattr(state, vec1).shape == (3, _input.shape[1])
+        assert getattr(state, vec2).shape == (3, _input.shape[1])
 
     return None
 
@@ -198,7 +210,7 @@ def test_times_dt(_dtype, _type, _input) -> None:
 @pytest.mark.parametrize(
     ["_input"],
     [
-        (np.random.normal(size=(6, 1)),),
+        (np.random.normal(size=(6,)),),
         (np.random.normal(size=(6, 10)),),
     ],
     ids=["scalar", "vector"],

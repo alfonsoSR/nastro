@@ -135,9 +135,16 @@ def test_append() -> None:
     array_expected = np.array([array_reference.T.tolist(), [3.0] * 6]).T
     state_expected = nt.GenericState(*array_expected)
 
-    assert state_expected == state_reference.append(scalar_input)
-    assert state_expected == state_reference.append(vector_input)
-    assert state_expected == state_reference.append(state_input)
+    scalar_out = state_reference.copy()
+    scalar_out.append(scalar_input)
+    vector_out = state_reference.copy()
+    vector_out.append(vector_input)
+    state_out = state_reference.copy()
+    state_out.append(state_input)
+
+    assert state_expected == scalar_out
+    assert state_expected == vector_out
+    assert state_expected == state_out
 
 
 @pytest.mark.parametrize(

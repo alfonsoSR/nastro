@@ -177,6 +177,7 @@ Earth = CelestialBody(
     j2=1.08262545e-3,
     T=3.155814950400000e07,
     a=149.6e9,
+    inertia_factor=0.3307,
 )
 
 Mars = CelestialBody(

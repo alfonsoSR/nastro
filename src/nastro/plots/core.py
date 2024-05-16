@@ -134,6 +134,8 @@ class PlotSetup:
     # Figure configuration
     figsize: tuple[float, float] = (7, 5)
     layout: Literal["tight", "constrained", "none", "compressed"] = "tight"
+    aspect: Literal["auto", "equal"] = "auto"
+
     title: str | None = None
     show: bool = True
     save: bool = False
@@ -337,6 +339,21 @@ class Plot(BaseFigure):
         self.lines[name] = (axis, line)
         self.artists[name] = (axis, (color, line))
 
+        return None
+
+    def add_scatter(
+        self,
+        x: nt.Array,
+        y: nt.Array | None = None,
+        fmt: str = ".",
+        width: float | None = None,
+        markersize: float | None = 2.0,
+        color: str | None = None,
+        alpha: float = 1.0,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+        self.add_line(x, y, fmt, width, markersize, color, alpha, label, axis)
         return None
 
     def add_boundary(
@@ -726,6 +743,10 @@ class Plot(BaseFigure):
                 ncols=self.setup.legend_columns,
             )
 
+        # Aspect ratio
+        for axis in self.axes_dict.values():
+            axis.set_aspect(self.setup.aspect)
+
         return None
 
     def __enter__(self) -> Self:
@@ -832,8 +853,8 @@ class Mosaic(BaseFigure):
 
     def add_subplot(
         self,
-        generator: type[SubplotType] = SingleAxis,
         setup: PlotSetup = PlotSetup(),
+        generator: type[SubplotType] = SingleAxis,
     ) -> SubplotType:
         return generator(setup, self.fig, next(self.subplots))
 

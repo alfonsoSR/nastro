@@ -17,10 +17,10 @@ if __name__ == "__main__":
     figure_setup = pp.PlotSetup(
         figsize=(12, 7),
         title="A simple figure with different types of subplots",
-        save=True,
+        save=False,
         dir=".",
         name="plots.png",
-        show=False,
+        show=True,
     )
     a_setup = pp.PlotSetup(ylabel="left", rlabel="right", plabel="parasite")
     c_setup = pp.PlotSetup(grid=False)
@@ -28,34 +28,34 @@ if __name__ == "__main__":
 
     with pp.Mosaic("ab;cd;ef", figure_setup) as fig:
 
-        with fig.add_subplot(pp.ParasiteAxis, a_setup) as a:
+        with fig.add_subplot(a_setup, pp.ParasiteAxis) as a:
 
             a.add_line(x, x, fmt=".-", markersize=2, label="x")
             a.add_line(x, x**2, fmt="--", axis="right", label="x^2")
             a.add_line(x, x**3, axis="parasite", label="x^3")
 
-        with fig.add_subplot(pp.SingleAxis) as b:
+        with fig.add_subplot(generator=pp.SingleAxis) as b:
 
             b.add_line(x, y, label="sin")
             b.add_line(x, z, label="cos")
             b.add_boundary(0.5, line="sin", follow=True)
             b.add_boundary(0.25, line="sin", follow=True, alpha=0.3)
 
-        with fig.add_subplot(pp.SingleAxis, c_setup) as c:
+        with fig.add_subplot(c_setup, pp.SingleAxis) as c:
 
             c.add_barplot(xbar, ybar, ticks=ticks)
 
-        with fig.add_subplot(pp.DoubleAxis, d_setup) as d:
+        with fig.add_subplot(d_setup, pp.DoubleAxis) as d:
 
             d.add_errorbar(x, y, np.abs(gen.normal(0.0, 0.1, x.shape)))
             d.add_errorbar(x, z, np.abs(gen.normal(0.0, 0.1, x.shape)), axis="right")
             d.add_line(x, 0.8 * y)
 
-        with fig.add_subplot(pp.DoubleAxis) as e:
+        with fig.add_subplot(generator=pp.DoubleAxis) as e:
 
             e.add_step(x, y, fmt=".-")
             e.add_step(x, z, axis="right")
 
-        with fig.add_subplot(pp.SingleAxis) as f:
+        with fig.add_subplot() as f:
 
             f.add_horizontal_barplot(xbar[:4], ybar[:4], ticks=ticks[:4])

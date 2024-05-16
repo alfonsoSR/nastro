@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nastro"
-version = "0.0.1"
+version = "0.0.2"
 description = "Numerical astrodynamics"
 authors = [
     { name = "Alfonso Sánchez Rodríguez", email = "alfonso.sr.trabajo@gmail.com" }
@@ -17,7 +17,8 @@ requires-python = ">=3.12"
 dependencies = [
     "numpy>=1.26.4",
     "matplotlib>=3.8",
-    "scipy>=1.13"
+    "scipy>=1.11",
+    "sympy>=1.12"
 ]
 
 [project.optional-dependencies]

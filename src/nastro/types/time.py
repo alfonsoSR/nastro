@@ -4,6 +4,7 @@ import numpy as np
 from typing import Any, Iterator, Sequence, Self, Union, Literal
 from pathlib import Path
 from ..constants import day
+import traceback
 
 # from ..data.formats import EOP
 
@@ -252,19 +253,52 @@ class JulianDay[T: (nt.Double, nt.Vector)]:
         return None
 
     @classmethod
-    def load(cls, path: str | Path, ref: Literal["J2000", "MJD"] | None = None) -> Self:
+    def load(
+        cls,
+        path: str | Path,
+        ref: Literal["J2000", "MJD"] | None = None,
+        unit: Literal["s", "d"] = "d",
+        relative: bool = True,
+    ) -> Self:
         """Load Julian date from Numpy binary file
 
         :param path: Path to file to load
         """
-        data = np.load(path)
-        return cls(*data, ref=ref)
+
+        # If extension is missing, assume .npy
+        path = Path(path)
+        if not path.suffix:
+            path = path.with_suffix(".npy")
+
+        # Generate absolute path
+        cwd = Path("/")
+        if relative:
+            cwd = Path(traceback.extract_stack()[-2].filename).parent
+        path = cwd / path
+
+        # Load output
+        match path.suffix:
+            case ".npy":
+                return cls(*np.load(path), ref=ref)
+            case ".dat":
+                data = np.loadtxt(path).T
+                if unit == "s":
+                    data /= day
+                if data.shape[0] == 1 or data.shape[0] == 7:
+                    return cls(data[0], ref=ref)
+                elif data.shape[0] == 2 or data.shape[0] == 8:
+                    return cls(data[0], data[1], ref=ref)
+                else:
+                    raise ValueError("Failed to load Julian date: Invalid data format")
+            case _:
+                raise ValueError("Failed to load Julian date: Invalid file extension")
 
     @classmethod
     def from_tudat(
         cls,
         state_history: dict[nt.Double, list[nt.Double]],
         ref: Literal["J2000", "MJD"] | None = None,
+        unit: Literal["s", "d"] = "d",
     ) -> Self:
         """Load Julian date from TUDAT state history
 

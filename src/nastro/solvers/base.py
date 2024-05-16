@@ -2,6 +2,131 @@ from ..forces import ForceModel
 from .. import types as nt, constants as nc
 import numpy as np
 from typing import Any
+from scipy.integrate import solve_ivp
+
+
+class SimplePropagator:
+
+    def __init__(self, model: ForceModel) -> None:
+
+        self.model = model
+
+        return None
+
+    def fun(self, t: nt.Double, s: nt.Vector) -> nt.Vector:
+        return self.model(t, nt.CartesianState(*s)).asarray.ravel()
+
+    def propagate_scipy(
+        self,
+        t0: nt.Double,
+        tend: nt.Double,
+        s0: nt.CartesianState,
+        solver: str = "RK45",
+        atol: nt.Double = 1e-10,
+        rtol: nt.Double = 1e-10,
+    ) -> tuple[nt.Vector, nt.CartesianState]:
+
+        sol = solve_ivp(
+            self.fun,
+            (t0, tend),
+            s0.asarray.ravel(),
+            method=solver,
+            atol=atol,
+            rtol=rtol,
+        )
+
+        return sol.t, nt.CartesianState(*sol.y)
+
+
+class SimpleCartesianPropagator:
+
+    def __init__(
+        self,
+        model: ForceModel,
+        t0: nt.Double,
+        s0: nt.CartesianState,
+        tend: nt.Double,
+        dt: nt.Double,
+    ) -> None:
+
+        self.model = model
+        self.now = t0
+        self.tend = tend
+        if not s0.scalar:
+            raise TypeError("Initial state must be scalar")
+        self.s = s0
+        self.h = dt
+
+        # Termination criteria
+        EPS = 1e-14
+        self.done = max(EPS, 0.1 * dt)
+        self.status = "running"
+
+        return None
+
+    def fun(self, t: nt.Double, s: nt.Vector) -> nt.Vector:
+        return self.model(t, nt.CartesianState(*s)).asarray.ravel()
+
+    def scipy_propagate(
+        self, solver: str = "RK45", atol: nt.Double = 1e-12, rtol: nt.Double = 1e-12
+    ) -> tuple[nt.Vector, nt.CartesianState]:
+
+        sol = solve_ivp(
+            self.fun,
+            (self.now, self.tend),
+            self.s.asarray.ravel(),
+            method=solver,
+            atol=atol,
+            rtol=rtol,
+        )
+
+        return sol.t, nt.CartesianState(*sol.y)
+
+    def propagate(self) -> tuple[nt.Vector, nt.CartesianState]:
+
+        out_state = nt.CartesianState(*self.s.asarray)
+        out_time = [self.now]
+
+        # Main loop
+        status = None
+        while status is None:
+
+            # Perform integration step
+            self.step()
+
+            # Check status after step
+            if self.status == "finished":
+                status = 0
+            elif self.status == "failed":
+                status = 1
+                break
+
+            # Update output
+            out_time.append(self.now)
+            out_state.append(self.s)
+
+        return np.array(out_time), out_state
+
+    def step(self) -> None:
+
+        # Check status before performing step
+        if self.status != "running":
+            raise RuntimeError("Attempted step on non-running propagator")
+
+        # Perform step
+        success = self._step_impl()
+
+        # Check for termination condition
+        if not success:
+            self.status = "failed"
+        else:
+            if self.tend - self.now < self.done:
+                self.status = "finished"
+
+        return None
+
+    def _step_impl(self) -> bool:
+        raise NotImplementedError("Subclasses must implement this method")
 
 
 class CartesianPropagator[U: (nt.Double, nt.JulianDay)]:
@@ -120,7 +245,9 @@ class CartesianPropagator[U: (nt.Double, nt.JulianDay)]:
         # Generate output
         time_int = np.array(out_time, dtype=np.float64)
         time_fr = np.array(out_time_fr, dtype=np.float64)
-        time: Any = nt.JulianDay(time_int, time_fr) if self.is_day else time_int + time_fr
+        time: Any = (
+            nt.JulianDay(time_int, time_fr) if self.is_day else time_int + time_fr
+        )
 
         return time, out_sol
 
