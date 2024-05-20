@@ -3,6 +3,7 @@ from .. import types as nt
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure as mplFigure
 from matplotlib.lines import Line2D
@@ -179,6 +180,8 @@ class PlotSetup:
     cbar_label: str | None = None
     cbar_shrink: float = 1.0
 
+    formatter_limits: tuple[int, int] = (-1, 1)
+
     legend: bool = True
     legend_location: str = "best"
     legend_title: str | None = None
@@ -186,6 +189,8 @@ class PlotSetup:
 
     grid: bool = False
     grid_alpha: float = 0.15
+
+    hidden_axes: bool = False
 
     def __post_init__(self) -> None:
 
@@ -659,6 +664,41 @@ class Plot(BaseFigure):
                     self.setup.pticks_idx, self.setup.pticks
                 )
 
+        # WEIRD BEHAVIOR OF FORMATTERS
+        for axis in self.axes_dict.values():
+            axis.tick_params(which="both", direction="in")
+            if axis.get_yscale() == "linear":
+                axis.ticklabel_format(
+                    axis="y",
+                    scilimits=self.setup.formatter_limits,
+                    useMathText=True,
+                )
+                axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            if axis.get_xscale() == "linear":
+                axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        if self.setup.hidden_axes:
+            for axis in self.axes_dict.values():
+                axis.axis("off")
+
+        # for axis in self.axes_dict.values():
+
+        #     # Tick configuration
+        #     axis.tick_params(which="both", direction="in")
+        #     if self.setup.xscale == "linear":
+        #         axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     if self.setup.yscale == "linear":
+        #         axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        # # Formatters
+        # for axis in self.axes_dict.values():
+        #     print(f"This happens")
+        #     axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     axis.tick_params(which="both", direction="in")
+        #     axis.yaxis.set_major_formatter(self.setup.formatter)
+        #     axis.xaxis.set_major_formatter(self.setup.formatter)
+
         # Colors
         for key, (_, artist) in self.artists.items():
 
@@ -757,16 +797,10 @@ class Plot(BaseFigure):
         self.postprocess()
 
         if "right" in self.axes_dict.keys():
-            if len(self.axes_dict["right"].get_lines()) > 1:
-                raise ValueError("Attempted to plot multiple lines on the right axis")
             line = self.axes_dict["right"].get_lines()[-1]
             self.axes_dict["right"].yaxis.label.set_color(line.get_color())
 
         if "parasite" in self.axes_dict.keys():
-            if len(self.axes_dict["parasite"].get_lines()) > 1:
-                raise ValueError(
-                    "Attempted to plot multiple lines on the parasite axis"
-                )
             line = self.axes_dict["parasite"].get_lines()[-1]
             self.axes_dict["parasite"].yaxis.label.set_color(line.get_color())
 
@@ -781,7 +815,7 @@ class Plot(BaseFigure):
         if self.setup.show:
             plt.show(block=True)
 
-        plt.close("all")
+        plt.close()
 
         return None
 
