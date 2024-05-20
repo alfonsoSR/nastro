@@ -55,4 +55,4 @@ Learn
         .. toctree::
             :maxdepth: 1
 
-            API reference <reference/index>
+            API reference <reference/index.rst>
