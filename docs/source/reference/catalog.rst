@@ -1,5 +1,3 @@
-.. currentmodule:: nastro.catalog
-
 ###############
 Types
 ###############

@@ -2,8 +2,6 @@
 Catalog
 ==============
 
-.. module:: nastro.catalog
-
 Base class
 ----------------
 .. autosummary::

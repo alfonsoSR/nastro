@@ -1,8 +1,6 @@
 API reference
 ================
 
-.. module:: nastro
-
 .. toctree::
     :maxdepth: 1
     :hidden:
