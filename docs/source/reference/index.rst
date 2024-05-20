@@ -1,11 +1,13 @@
 API reference
 ================
 
+.. module:: nastro
+
 .. toctree::
     :maxdepth: 1
     :titlesonly:
 
-    Types <./types.rst>
+    Catalog <catalog>
 
 .. Nastro includes the following submodules
 
