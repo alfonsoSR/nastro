@@ -25,8 +25,6 @@ _name_cache = {}
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 
 sys.path.insert(0, str(Path(__file__).parents[2]))
-sys.path.insert(0, os.path.abspath("../sphinxext"))
-import nastro
 
 # sys.path.insert(0, os.path.abspath("../../src/nastro"))
 # print(sys.path)
@@ -43,17 +41,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx_design",
     "sphinx.ext.napoleon",
-    "myst_nb",
-    "sphinx_design",
-    # "notfound.extension",
-    # "sphinx_copybutton",
-    "sphinx_codeautolink",
 ]
-
-# codeautolink
-codeautolink_autodoc_inject = False
-codeautolink_search_css_classes = ["highlight-default"]
-codeautolink_concat_default = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
