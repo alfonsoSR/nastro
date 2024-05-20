@@ -4,6 +4,7 @@ import sys
 import importlib
 from docutils import nodes
 from docutils.parsers.rst import Directive
+from pathlib import Path
 
 # Minimum version, enforced by sphinx
 needs_sphinx = "4.3"
@@ -23,15 +24,16 @@ _name_cache = {}
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-# print(sys.path)
+sys.path.insert(0, str(Path(__file__).parents[2]))
+sys.path.insert(0, os.path.abspath("../sphinxext"))
+import nastro
+
 # sys.path.insert(0, os.path.abspath("../../src/nastro"))
 # print(sys.path)
 # sys.path.insert(0, os.path.abspath("../.."))
 
 extensions = [
     "sphinx.ext.autodoc",
-    "numpydoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -41,7 +43,17 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx_design",
     "sphinx.ext.napoleon",
+    "myst_nb",
+    "sphinx_design",
+    # "notfound.extension",
+    # "sphinx_copybutton",
+    "sphinx_codeautolink",
 ]
+
+# codeautolink
+codeautolink_autodoc_inject = False
+codeautolink_search_css_classes = ["highlight-default"]
+codeautolink_concat_default = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -180,5 +192,4 @@ autodoc_typehints = "none"
 # -----------------------------------------------------------------------------
 # Autosummary
 # -----------------------------------------------------------------------------
-
 autosummary_generate = True
