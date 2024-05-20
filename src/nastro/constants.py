@@ -2,8 +2,6 @@
 Constants
 ==========================================
 
-.. module:: nastro.constants
-
 Physical and mathematical constants and units taken from SciPy.
 
 ======================================= ===============================================

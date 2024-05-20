@@ -1,5 +1,4 @@
-.. automodule:: nastro.catalog
+.. automodule:: nastro.constants
     :no-members:
     :no-inherited-members:
     :no-special-members:
-    :no-undoc-members:

@@ -25,7 +25,6 @@ _name_cache = {}
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 
 sys.path.insert(0, "../../src")
-print(print([pi for pi in Path(sys.path[0]).iterdir()]))
 
 # sys.path.insert(0, os.path.abspath("../../src/nastro"))
 # print(sys.path)

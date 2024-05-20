@@ -2,15 +2,12 @@
 Types submodule
 ================
 
-.. currentmodule:: nastro.types
-
 Type aliases
 -------------
 
 =============== ==============================================================
 `Double`        Double precision floating point number
 `Vector`        One-dimensional array of double precision floating point numbers
-`ArrayLike`     Sequence of elements that can be converted to a numpy array
 =============== ==============================================================
 
 State definition
@@ -20,24 +17,8 @@ State definition
     :toctree: generated/
     :nosignatures:
 
-    GenericState
     CartesianState
-    CartesianStateDerivative
-    CartesianPosition
-    CartesianVelocity
-    KeplerianState
-    KeplerianStateDerivative
 
-Time
------
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    JulianDay
-    CalendarDate
-    UTC
 
 """
 
