@@ -1,3 +1,5 @@
+.. _nastro-api:
+
 API reference
 ================
 
@@ -13,10 +15,11 @@ Nastro includes the following submodules
 =============  ==================================================
 
 .. toctree::
-   :hidden:
-   :titlesonly:
+    :maxdepth: 1
+    :hidden:
+    :titlesonly:
 
-   Types <types>
-   Plots <plots>
-   Constants <constants>
-   Catalog  <catalog>
+    types <types>
+    plots <plots>
+    Constants <constants>
+    Catalog  <catalog>

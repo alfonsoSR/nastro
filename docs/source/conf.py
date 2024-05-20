@@ -119,7 +119,7 @@ html_theme_options = {
     "back_to_top_button": True,
 }
 
-html_sidebars = {"index": [], "**": ["sidebar-nav-bs", "sidebar-ethical-ads"]}
+html_sidebars = {"index": [], "**": ["sidebar-nav-bs"]}
 
 html_static_path = ["_static"]
 html_last_updated_fmt = "%b %d, %Y"
