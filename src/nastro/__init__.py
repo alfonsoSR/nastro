@@ -2,8 +2,6 @@
 ======================
 API Reference
 ======================
-
-
 """
 
 from . import types, constants, catalog

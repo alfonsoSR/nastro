@@ -1,8 +1,8 @@
 .. automodule:: nastro
+    :no-index:
     :no-members:
     :no-special-members:
     :no-inherited-members:
-    :no-undoc-members:
 
 
 .. toctree::
