@@ -2,14 +2,13 @@
 Plotting submodule
 ==================
 
-.. currentmodule:: nastro.plots
-
 Generic plots
 --------------
 
 .. autosummary::
     :toctree: generated/
     :nosignatures:
+    :recursive:
 
     PlotSetup
     SingleAxis
@@ -24,6 +23,7 @@ Astrodynamics plots
 .. autosummary::
     :toctree: generated/
     :nosignatures:
+    :recursive:
 
     PlotCartesianState
     PlotKeplerianState

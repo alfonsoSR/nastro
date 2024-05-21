@@ -2,6 +2,13 @@
 Types submodule
 ================
 
+.. autosummary::
+    :toctree: generated/
+    :nosignatures:
+
+    Double
+    Vector
+
 Type aliases
 -------------
 
@@ -9,16 +16,6 @@ Type aliases
 `Double`        Double precision floating point number
 `Vector`        One-dimensional array of double precision floating point numbers
 =============== ==============================================================
-
-State definition
------------------
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    CartesianState
-
 
 """
 

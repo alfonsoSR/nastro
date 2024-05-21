@@ -5,6 +5,7 @@ import importlib
 from docutils import nodes
 from docutils.parsers.rst import Directive
 from pathlib import Path
+import warnings
 
 # Minimum version, enforced by sphinx
 needs_sphinx = "4.3"
@@ -25,6 +26,8 @@ _name_cache = {}
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 
 sys.path.insert(0, "../../src")
+from numpydoc.docscrape_sphinx import SphinxDocString
+import numpydoc.docscrape as np_docscrape  # noqa: E402
 
 # sys.path.insert(0, os.path.abspath("../../src/nastro"))
 # print(sys.path)
@@ -32,6 +35,7 @@ sys.path.insert(0, "../../src")
 
 extensions = [
     "sphinx.ext.autodoc",
+    "numpydoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -102,6 +106,7 @@ nitpick_ignore = [
 
 exclude_patterns = []  # glob-style
 
+
 # -----------------------------------------------------------------------------
 # HTML output
 # -----------------------------------------------------------------------------
@@ -171,7 +176,7 @@ htmlhelp_basename = "nastro"
 # }
 
 autodoc_default_options = {
-    "inherited-members": None,
+    "inherited-members": False,
     "member-order": "bysource",
 }
 autodoc_typehints = "none"
@@ -181,3 +186,12 @@ autodoc_typehints = "none"
 # Autosummary
 # -----------------------------------------------------------------------------
 autosummary_generate = True
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/devdocs", None),
+    "neps": ("https://numpy.org/neps", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "asv": ("https://asv.readthedocs.io/en/stable/", None),
+    "statsmodels": ("https://www.statsmodels.org/stable", None),
+}
