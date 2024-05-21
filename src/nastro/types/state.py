@@ -16,13 +16,6 @@ class GenericState[U: (Double, Vector)]:
 
     This class is not meant to be instantiated directly, but to be subclassed
     to create specific types of state vectors: cartesian, keplerian, etc.
-
-    :param q1: First component of the state vector
-    :param q2: Second component of the state vector
-    :param q3: Third component of the state vector
-    :param q4: Fourth component of the state vector
-    :param q5: Fifth component of the state vector
-    :param q6: Sixth component of the state vector
     """
 
     __slots__ = ("q1", "q2", "q3", "q4", "q5", "q6")
@@ -260,6 +253,7 @@ class GenericState[U: (Double, Vector)]:
 
     # IO
     def save(self, path: str | Path, relative: bool = True) -> Path:
+        """Save state vector to file"""
 
         # Add extension if missing
         path = Path(path)
@@ -280,6 +274,7 @@ class GenericState[U: (Double, Vector)]:
 
     @classmethod
     def load(cls, path: str | Path, relative: bool = True) -> Self:
+        """Load state vector from npy file"""
 
         # Add extension if missing
         path = Path(path)

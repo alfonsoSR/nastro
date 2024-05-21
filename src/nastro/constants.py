@@ -50,7 +50,6 @@ year = day * 365
 julian_year = day * 365.25
 
 # Lengths in meters
-km = 1e3
 au = astronomical_unit = sc.astronomical_unit
 light_year = sc.light_year
 parsec = sc.parsec

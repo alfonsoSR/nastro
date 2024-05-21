@@ -1,14 +1,14 @@
 """
-Subpackages
------------
-Using any of these subpackages requires an explicit import. For example,
-``import scipy.cluster``.
+API Reference
+--------------
 
-::
+The following modules are available:
 
- types                      --- Vector Quantization / Kmeans
- catalog                    --- Catalog data
- constants                  --- Physical and mathematical constants and units
+================== ==================================================
+`types`             Data types
+`constants`         Physical and mathematical constants
+`catalog`           Celestial object catalog
+================== ==================================================
 """
 
 from . import types, constants, catalog

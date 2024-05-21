@@ -162,24 +162,13 @@ html_file_suffix = ".html"
 
 htmlhelp_basename = "nastro"
 
-# # Autodoc
-# autodoc_default_options = {
-#     "inherited-members": True,
-#     "member-order": "bysource",
-#     "show-inheritance": False,
-# }
-# autodoc_typehints = "description"
-# autodoc_type_aliases = {
-#     "Double": "nastro.types.core.Double",
-#     "Vector": "nastro.types.core.Vector",
-#     "ArrayLike": "nastro.types.core.ArrayLike",
-# }
-
+# Autodoc
 autodoc_default_options = {
     "inherited-members": False,
     "member-order": "bysource",
+    "show-inheritance": False,
 }
-autodoc_typehints = "none"
+autodoc_typehints = "description"
 
 
 # -----------------------------------------------------------------------------

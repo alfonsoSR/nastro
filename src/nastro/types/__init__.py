@@ -2,20 +2,25 @@
 Types submodule
 ================
 
+Fundamental types
+------------------
+===========  ==================  ====================================================
+Type           Type Guard         Description
+===========  ==================  ====================================================
+``Scalar``    ``is_scalar``          A single integer or floating point number.
+``Double``    ``is_double``          A single floating point number.
+``Vector``    ``is_vector``          A 1D numpy array of floating point numbers.
+``Array``     ``is_array``           A 1D numpy array or sequence of scalars.
+===========  ==================  ====================================================
+
+State representation
+---------------------
+
 .. autosummary::
-    :toctree: generated/
-    :nosignatures:
+    :toctree: generated
+    :recursive:
 
-    Double
-    Vector
-
-Type aliases
--------------
-
-=============== ==============================================================
-`Double`        Double precision floating point number
-`Vector`        One-dimensional array of double precision floating point numbers
-=============== ==============================================================
+    GenericState
 
 """
 
