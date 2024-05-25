@@ -115,6 +115,16 @@ class JulianDay[T: (nt.Double, nt.Vector)]:
         """Days past initial epoch"""
         return self.jd - self[0].jd
 
+    @property
+    def et(self) -> T:
+        """Ephemeris time"""
+        return (self.jd - type(self)(0.0, 0.0, ref="J2000").jd) * day
+
+    @property
+    def steps(self) -> T:
+        """Difference between consecutive epochs"""
+        return self.dt[1:] - self.dt[:-1]
+
     def __repr__(self) -> str:
 
         out = "Julian Day\n"

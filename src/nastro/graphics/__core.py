@@ -17,6 +17,8 @@ from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
 
+# NOTE: DEPRECATED - ONLY KEPT FOR DOCSTRINGS
+
 # TODO: ADD DOCSTRINGS TO PUBLIC METHODS
 # TODO: SUPPORT FOR 3D PLOTS
 # TODO: SUPPORT FOR FANCY PLOTS (EX: POLAR, IMSHOW, ETC.)
@@ -450,6 +452,45 @@ class Plot(BaseFigure):
         else:
             count = len(self.artists) + 1
             self.artists[f"bound-{count}"] = out
+
+        return None
+
+    def add_limits(
+        self,
+        low: nt.Double,
+        high: nt.Double,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+        """Vertical boundary
+
+        Generates a colored region between two vertical lines spanning the entire
+        height of the plot.
+
+        :param low: Lower limit of the boundary.
+        :param high: Upper limit of the boundary.
+        :param color: Color of the boundary.
+        :param alpha: Transparency of the boundary.
+        :param label: Label to identify the boundary in the legend.
+        :param axis: Axis to plot the boundary.
+        """
+
+        boundary = self.axes_dict[axis].add_artist(
+            Rectangle(
+                (-1e20, low),  # type: ignore
+                2e20,
+                high - low,  # type: ignore
+                alpha=alpha,
+                color=color,
+                label=label,
+            )
+        )
+
+        out = (axis, (None, color, boundary))
+        name = label if label is not None else f"vbound-{len(self.artists) + 1}"
+        self.artists[name] = out
 
         return None
 

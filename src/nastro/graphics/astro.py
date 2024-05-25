@@ -1,6 +1,7 @@
 from ..types import KeplerianState, CartesianState, Vector
 from ..constants import day
 from . import core as ng
+from typing import Optional
 
 # TODO: ADD DOCSTRINGS
 
@@ -217,7 +218,7 @@ class CompareKeplerianStates(CompareState):
         return [da_setup, de_setup, di_setup, daop_setup, draan_setup, dta_setup]
 
 
-class PlotOrbit(ng.Base3D):
+class PlotOrbit(ng.BaseFigure):
 
     def add_orbit(
         self,
@@ -231,7 +232,7 @@ class PlotOrbit(ng.Base3D):
         axis: str = "left",
     ) -> None:
 
-        self.add_line(
+        self.line(
             state.x, state.y, state.z, fmt, width, markersize, color, alpha, label, axis
         )
 

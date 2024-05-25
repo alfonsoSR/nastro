@@ -1,0 +1,887 @@
+from matplotlib import pyplot as plt
+from typing import Literal, Self, Iterator, Any, TypeVar, TypeAlias, Sequence, Optional
+from matplotlib.gridspec import GridSpec
+import numpy as np
+from matplotlib.figure import SubFigure, Figure as mplFigure
+from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.cbook as cbook
+from dataclasses import dataclass
+from pathlib import Path
+from matplotlib import ticker
+from matplotlib.patches import Rectangle
+from matplotlib.lines import Line2D
+from ..types import Scalar, Array
+from matplotlib.rcsetup import cycler
+
+PlotType = TypeVar("PlotType", bound="BaseFigure")
+FigureLike: TypeAlias = SubFigure | mplFigure
+AxesLike: TypeAlias = Axes | Axes3D
+Plotable: TypeAlias = Scalar | Array | Sequence[Scalar]
+
+COLOR_CYCLER: Any = cycler(  # type: ignore
+    color=[
+        "#1f77b4",
+        "#aec7e8",
+        "#ff7f0e",
+        "#ffbb78",
+        "#2ca02c",
+        "#98df8a",
+        "#d62728",
+        "#ff9896",
+        "#9467bd",
+        "#c5b0d5",
+        "#8c564b",
+        "#c49c94",
+        "#e377c2",
+        "#f7b6d2",
+        "#7f7f7f",
+        "#c7c7c7",
+        "#bcbd22",
+        "#dbdb8d",
+        "#17becf",
+        "#9edae5",
+    ]
+)
+
+
+@dataclass
+class Artist:
+
+    axis: str
+    type: str
+    color: Optional[str]
+    object: Any
+
+
+@dataclass
+class PlotSetup:
+
+    # Basic figure configuration
+    figsize: tuple[float, float] = (7, 4)
+    layout: Literal["tight", "constrained", "none", "compressed"] = "compressed"
+    aspect: Literal["auto", "equal"] = "auto"
+    figcolor: str | None = None
+    title: str | None = None
+
+    # Save and show
+    show: bool = True
+    save: bool = False
+    dir: Path | str | None = None
+    name: str | None = None
+
+    # Subplot configuration
+    axtitle: str | None = None
+
+    xlabel: str | None = None
+    ylabel: str | None = None
+    zlabel: str | None = None
+    rlabel: str | None = None
+    plabel: str | None = None
+
+    xscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    yscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    zscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    rscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+    pscale: Literal["linear", "log", "symlog", "logit"] = "linear"
+
+    xlim: tuple[float, float] | None = None
+    ylim: tuple[float, float] | None = None
+    zlim: tuple[float, float] | None = None
+    rlim: tuple[float, float] | None = None
+    plim: tuple[float, float] | None = None
+
+    xscilimits: tuple[int, int] = (-2, 2)
+    yscilimits: tuple[int, int] = (-2, 2)
+    zscilimits: tuple[int, int] = (-2, 2)
+    rscilimits: tuple[int, int] = (-2, 2)
+    pscilimits: tuple[int, int] = (-2, 2)
+
+    grid: bool = True
+    grid_alpha: float = 0.15
+
+    show_axes: bool = True
+
+    legend: bool = True
+    legend_location: str = "best"
+    legend_title: str | None = None
+    legend_columns: int = 1
+    colorbar: bool = True
+    colorbar_title: str | None = None
+    colorbar_shrink: float = 1.0
+
+    projection: Literal["persp", "ortho"] = "ortho"
+
+    def copy(self) -> "PlotSetup":
+        return PlotSetup(**self.__dict__)
+
+    def version(self, **params) -> "PlotSetup":
+
+        new = self.copy()
+        for param, value in params.items():
+            if hasattr(new, param):
+                setattr(new, param, value)
+            else:
+                raise ValueError(f"Invalid parameter: {param}")
+
+        return new
+
+
+class Canvas:
+
+    def __init__(self, mosaic: str, setup: PlotSetup) -> None:
+
+        self.canvas_setup = setup
+        self.canvas = plt.figure(
+            figsize=self.canvas_setup.figsize,
+            layout=self.canvas_setup.layout,
+            facecolor=self.canvas_setup.figcolor,
+        )
+        if self.canvas_setup.title is not None:
+            self.canvas.suptitle(self.canvas_setup.title)
+
+        gridspec, structure = self.__generate_mosaic(mosaic)
+        self.subfigures = iter(
+            self.canvas.add_subfigure(gridspec[sti]) for sti in structure
+        )
+
+        return None
+
+    def __make_array(self, inp):
+        """FROM matplotlib.subplot_mosaic"""
+        r0, *rest = inp
+        if isinstance(r0, str):
+            raise ValueError("List mosaic specification must be 2D")
+        for j, r in enumerate(rest, start=1):
+            if isinstance(r, str):
+                raise ValueError("List mosaic specification must be 2D")
+            if len(r0) != len(r):
+                raise ValueError(
+                    "All of the rows must be the same length, however "
+                    f"the first row ({r0!r}) has length {len(r0)} "
+                    f"and row {j} ({r!r}) has length {len(r)}."
+                )
+        out = np.zeros((len(inp), len(r0)), dtype=object)
+        for j, r in enumerate(inp):
+            for k, v in enumerate(r):
+                out[j, k] = v
+        return out
+
+    def __identify_keys_and_nested(self, mosaic) -> Any:
+        """FROM matplotlib.subplot_mosaic"""
+        unique_ids = cbook._OrderedSet()
+        nested = {}
+        for j, row in enumerate(mosaic):
+            for k, v in enumerate(row):
+                if v == ".":
+                    continue
+                elif not cbook.is_scalar_or_string(v):
+                    nested[(j, k)] = self.__make_array(v)
+                else:
+                    unique_ids.add(v)
+
+        return tuple(unique_ids), nested
+
+    def __do_layout(self, gs, mosaic, unique_ids, nested):
+        """FROM matplotlib.subplot_mosaic"""
+
+        this_level = dict()
+
+        for name in unique_ids:
+            indx = np.argwhere(mosaic == name)
+            start_row, start_col = np.min(indx, axis=0)
+            end_row, end_col = np.max(indx, axis=0) + 1
+            slc = (slice(start_row, end_row), slice(start_col, end_col))
+            if (mosaic[slc] != name).any():
+                raise ValueError(
+                    f"While trying to layout\n{mosaic!r}\n"
+                    f"we found that the label {name!r} specifies a "
+                    "non-rectangular or non-contiguous area."
+                )
+            this_level[(start_row, start_col)] = (name, slc, "axes")
+
+        for (j, k), nested_mosaic in nested.items():
+            this_level[(j, k)] = (None, nested_mosaic, "nested")
+
+        return [this_level[key][1] for key in sorted(this_level)]
+
+    def __generate_mosaic(self, mosaic) -> tuple[GridSpec, Iterator[slice]]:
+
+        __mosaic = self.__make_array(
+            self.canvas._normalize_grid_string(mosaic),  # type: ignore
+        )
+        rows, cols = __mosaic.shape
+        gridspec = self.canvas.add_gridspec(rows, cols)
+        layout = self.__do_layout(
+            gridspec, __mosaic, *self.__identify_keys_and_nested(__mosaic)
+        )
+        return gridspec, iter(layout)
+
+    def __enter__(self):
+
+        # Don't make plots if they are not shown or saved
+        if self.canvas_setup.show or self.canvas_setup.save:
+            return self
+        else:
+            return NotImplemented
+
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+
+        if exc_type is AttributeError and "NotImplementedType" in str(exc_value):
+            return True
+        elif exc_type is not None:
+            return False
+        else:
+            pass
+
+        if self.canvas_setup.save:
+
+            if self.canvas_setup.dir is None or self.canvas_setup.name is None:
+                raise ValueError("Failed to save figure: missing filename or directory")
+            path = Path(self.canvas_setup.dir) / self.canvas_setup.name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.canvas.savefig(path)
+
+        if self.canvas_setup.show:
+            plt.show()
+
+        print(f"Canvas closed.")
+        plt.close(self.canvas)
+
+        return True
+
+
+class BaseFigure(Canvas):
+
+    def __init__(
+        self,
+        setup: PlotSetup = PlotSetup(),
+        _figure: FigureLike | None = None,
+    ) -> None:
+
+        self.setup = setup
+        self.cycler = iter(COLOR_CYCLER)
+
+        # Get figure and axes
+        if _figure is None:
+            self.is_subplot = False
+            super().__init__("a", setup)
+            self.figure = next(self.subfigures)
+        else:
+            self.is_subplot = True
+            self.figure = _figure
+
+        self.axes = {"left": self.generate_subplot()}
+
+        # Setup figure and axes
+        self.setup = setup
+        self.custom_configuration()
+        self.common_configuration()
+
+        # Containers
+        self.artists: dict[str, Artist] = {}
+
+        return None
+
+    def next_color(self) -> str:
+        try:
+            return next(self.cycler)["color"]
+        except StopIteration:
+            self.cycler = iter(COLOR_CYCLER)
+            return next(self.cycler)["color"]
+
+    def generate_subplot(self) -> AxesLike:
+        return self.figure.add_subplot()
+
+    def custom_configuration(self) -> None:
+        return None
+
+    def common_configuration(self) -> None:
+
+        if self.setup.axtitle:
+            self.axes["left"].set_title(self.setup.axtitle)
+
+        # Labels
+        if self.setup.xlabel:
+            self.axes["left"].set_xlabel(self.setup.xlabel)
+        if self.setup.ylabel:
+            self.axes["left"].set_ylabel(self.setup.ylabel)
+        if self.setup.zlabel and isinstance(self.axes["left"], Axes3D):
+            self.axes["left"].set_zlabel(self.setup.zlabel)
+        if self.setup.rlabel and "right" in self.axes:
+            self.axes["right"].set_ylabel(self.setup.rlabel)
+        if self.setup.plabel and "parasite" in self.axes:
+            self.axes["parasite"].set_ylabel(self.setup.plabel)
+
+        # Scales
+        if self.setup.xscale:
+            self.axes["left"].set_xscale(self.setup.xscale)
+        if self.setup.yscale:
+            self.axes["left"].set_yscale(self.setup.yscale)
+        if self.setup.zscale and isinstance(self.axes["left"], Axes3D):
+            self.axes["left"].set_zscale(self.setup.zscale)  # type: ignore
+        if self.setup.rscale and "right" in self.axes:
+            self.axes["right"].set_yscale(self.setup.rscale)
+        if self.setup.pscale and "parasite" in self.axes:
+            self.axes["parasite"].set_yscale(self.setup.pscale)
+
+        # Limits
+        if self.setup.xlim:
+            self.axes["left"].set_xlim(self.setup.xlim)
+        if self.setup.ylim:
+            self.axes["left"].set_ylim(self.setup.ylim)
+        if self.setup.zlim and isinstance(self.axes["left"], Axes3D):
+            self.axes["left"].set_zlim(self.setup.zlim)
+        if self.setup.rlim and "right" in self.axes:
+            self.axes["right"].set_ylim(self.setup.rlim)
+        if self.setup.plim and "parasite" in self.axes:
+            self.axes["parasite"].set_ylim(self.setup.plim)
+
+        # Grid and other configurations
+        if self.setup.grid:
+            self.axes["left"].grid(alpha=self.setup.grid_alpha, which="both")
+
+        return None
+
+    def common_postprocessing(self) -> None:
+
+        # Colors
+        for artist in self.artists.values():
+
+            match artist.type:
+
+                case "errorbar":
+                    color = self.next_color() if artist.color is None else artist.color
+                    artist.object[0].set_color(color)
+                    for cap in artist.object[2]:
+                        cap.set_color(color)
+
+                case "step":
+                    color = self.next_color() if artist.color is None else artist.color
+                    for line in artist.object:
+                        line.set_color(color)
+
+                case "barh":
+                    for bar in artist.object:
+                        bar.set_color(self.next_color())
+
+                case "bar":
+                    for bar in artist.object:
+                        bar.set_color(self.next_color())
+
+                case "hist":
+                    color = self.next_color() if artist.color is None else artist.color
+                    for bar in artist.object:
+                        bar.set_color(color)
+
+                case "cmap":
+                    if self.setup.colorbar:
+                        self.figure.colorbar(
+                            artist.object,
+                            ax=self.axes["left"],
+                            label=self.setup.colorbar_title,
+                            shrink=self.setup.colorbar_shrink,
+                        )
+
+                case "image":
+                    if self.setup.colorbar:
+                        self.figure.colorbar(
+                            artist.object,
+                            ax=self.axes["left"],
+                            label=self.setup.colorbar_title,
+                            shrink=self.setup.colorbar_shrink,
+                        )
+
+                case "contour":
+                    pass
+
+                case _:
+                    color = self.next_color() if artist.color is None else artist.color
+                    artist.object.set_color(color)
+
+        legend_handles = []
+        for axis in self.axes.values():
+
+            # Ticks and axes
+            axis.tick_params(direction="in", which="both")
+            if axis.get_yscale() == "linear":
+                axis.ticklabel_format(
+                    axis="y", scilimits=self.setup.yscilimits, useMathText=True
+                )
+                axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            if axis.get_xscale() == "linear":
+                axis.ticklabel_format(
+                    axis="x", scilimits=self.setup.xscilimits, useMathText=True
+                )
+                axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+            if not self.setup.show_axes:
+                axis.axis("off")
+
+            # Legend
+            for handle in axis.get_legend_handles_labels()[0]:
+                if handle not in legend_handles:
+                    legend_handles.append(handle)
+
+            # Aspect ratio
+            axis.set_aspect(self.setup.aspect)
+
+        # Legend
+        if self.setup.legend and legend_handles != []:
+            __last_axis = list(self.axes.values())[-1]
+            __last_axis.legend(
+                loc=self.setup.legend_location,
+                handles=legend_handles,
+                title=self.setup.legend_title,
+                ncols=self.setup.legend_columns,
+            )
+
+        return None
+
+    def custom_postprocessing(self) -> None:
+        return None
+
+    def __enter__(self) -> Self:
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+
+        self.common_postprocessing()
+        self.custom_postprocessing()
+
+        if not self.is_subplot:
+            super().__exit__(exc_type, exc_value, traceback)
+
+        if exc_type is not None:
+            return False
+
+        return True
+
+    def line(
+        self,
+        x: Array | Scalar,
+        y: Optional[Array | Scalar] = None,
+        z: Optional[Array | Scalar] = None,
+        fmt: str = "-",
+        width: Optional[float] = None,
+        markersize: Optional[float] = None,
+        color: Optional[str] = None,
+        alpha: float = 1.0,
+        label: Optional[str] = None,
+        axis: str = "left",
+    ) -> None:
+
+        args = [x, y] if y is not None else [x]
+        (line,) = self.axes[axis].plot(
+            *args,
+            fmt,
+            linewidth=width,
+            markersize=markersize,
+            color=color,
+            alpha=alpha,
+            label=label,
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "line", color, line)
+
+        return None
+
+    def limits(
+        self,
+        min: Scalar,
+        max: Scalar,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        min = float(min)
+        max = float(max)
+
+        boundary = self.axes[axis].add_artist(
+            Rectangle(
+                (-1e20, min),
+                2e20,
+                max - min,
+                color=color,
+                alpha=alpha,
+                label=label,
+            )
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "limits", color, boundary)
+
+        return None
+
+    def boundary(
+        self,
+        error: Scalar | Array,
+        reference: str | Literal["last"] = "last",
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        if reference == "last":
+            alist = list(self.artists.values())
+            for idx in range(1, len(self.artists) + 1):
+                if alist[-idx].axis == axis and alist[-idx].type == "line":
+                    reference = alist[-idx].object
+                    break
+        else:
+            reference = self.artists[reference].object
+        assert isinstance(reference, Line2D)
+
+        x_data = reference.get_xdata()
+        y_data = reference.get_ydata()
+
+        boundary = self.axes[axis].fill_between(
+            x_data,
+            y_data - np.array(error),
+            y_data + np.array(error),
+            color=color,
+            alpha=alpha,
+            label=label,
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "limits", color, boundary)
+
+        return None
+
+    def vlimits(
+        self,
+        min: Scalar,
+        max: Scalar,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+
+        min = float(min)
+        max = float(max)
+
+        boundary = self.axes[axis].add_artist(
+            Rectangle(
+                (min, -1e20),
+                max - min,
+                2e20,
+                color=color,
+                alpha=alpha,
+                label=label,
+            )
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "vlimits", color, boundary)
+
+        return None
+
+    def errorbar(
+        self,
+        x: Array,
+        y: Array,
+        error: Scalar | Array,
+        z: Optional[Array] = None,
+        fmt="-",
+        color: Optional[str] = None,
+        label: Optional[str] = None,
+        axis: str = "left",
+    ) -> None:
+
+        errorbar = self.axes[axis].errorbar(
+            x, y, z=z, yerr=error, fmt=fmt, color=color, label=label
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "errorbar", color, errorbar)
+
+        return None
+
+    def step(
+        self,
+        x: Array,
+        y: Optional[Array] = None,
+        where: Literal["pre", "post", "mid"] = "mid",
+        fmt: str = "-",
+        color: Optional[str] = None,
+        label: Optional[str] = None,
+        axis: str = "left",
+    ) -> None:
+
+        args = [x, y] if y is not None else [x]
+        step = self.axes[axis].step(
+            *args,
+            fmt,
+            where=where,
+            color=color,
+            label=label,
+        )
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "step", color, step)
+
+        return None
+
+    def bar(
+        self,
+        x: Array,
+        height: Array,
+        width: float = 0.8,
+        ticks: Optional[Array] = None,
+        axis: str = "left",
+    ) -> None:
+
+        bar = self.axes[axis].bar(x, height, width=width, tick_label=ticks)
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "bar", None, bar)
+
+        return None
+
+    def barh(
+        self,
+        y: Array,
+        width: Array,
+        height: float = 0.8,
+        ticks: Optional[Array] = None,
+        axis: str = "left",
+    ) -> None:
+
+        bar = self.axes[axis].barh(y, width, height=height, tick_label=ticks)
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "barh", None, bar)
+
+        return None
+
+    def hist(
+        self,
+        data: Array,
+        bins: int = 10,
+        normalize: bool = False,
+        cumulative: bool = False,
+        hist_type: Literal["bar", "barstacked", "step", "stepfilled"] = "bar",
+        align: Literal["left", "mid", "right"] = "mid",
+        label: Optional[str] = None,
+        color: Optional[str] = None,
+        alpha: float = 0.8,
+        axis: str = "left",
+    ) -> None:
+
+        _, _, histogram = self.axes[axis].hist(
+            data,
+            bins=bins,
+            density=normalize,
+            cumulative=cumulative,
+            histtype=hist_type,
+            align=align,
+            label=label,
+            color=color,
+            alpha=alpha,
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "hist", color, histogram)
+
+        return None
+
+    def imshow(self, data: Array, cmap: str = "GnBu") -> None:
+
+        data = np.array(data)
+        if data.ndim != 2:
+            raise ValueError("Data must be 2D.")
+        if data.shape[0] != data.shape[1]:
+            raise ValueError("Data must be square.")
+
+        image = self.axes["left"].imshow(data, cmap=cmap)
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist("left", "image", None, image)
+
+        return None
+
+    def contour(
+        self,
+        x: Array,
+        y: Array,
+        z: Array,
+        levels: Array,
+        color: Optional[str] = None,
+        cmap: str = "GnBu",
+    ) -> None:
+
+        contours = self.axes["left"].contour(
+            x, y, z, levels=levels, colors=color, cmap=cmap
+        )
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist("left", "contour", color, contours)
+
+        return None
+
+    def contourf(
+        self,
+        x: Array,
+        y: Array,
+        z: Array,
+        levels: Array,
+        color: Optional[str] = None,
+        cmap: str = "GnBu",
+    ) -> None:
+
+        contours = self.axes["left"].contourf(
+            x, y, z, levels=levels, colors=color, cmap=cmap
+        )
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist("left", "cmap", color, contours)
+
+        return None
+
+
+class SingleAxis(BaseFigure):
+
+    @property
+    def ax(self) -> Axes:
+        return self.axes["left"]
+
+    @property
+    def left(self) -> Axes:
+        return self.axes["left"]
+
+
+class DoubleAxis(BaseFigure):
+
+    @property
+    def left(self) -> Axes:
+        return self.axes["left"]
+
+    @property
+    def right(self) -> Axes:
+        return self.axes["right"]
+
+    @property
+    def parax(self) -> Axes:
+        return self.axes["parasite"]
+
+    def custom_configuration(self) -> None:
+
+        __right = self.axes["left"].twinx()
+        assert isinstance(__right, Axes)
+        self.axes["right"] = __right
+
+        return None
+
+    def custom_postprocessing(self) -> None:
+
+        # Add color indicator to label
+        lines = self.axes["right"].get_lines()
+        if len(lines) > 1:
+            raise ValueError("Don't plot more than one line in the right axis.")
+        self.axes["right"].yaxis.label.set_color(lines[0].get_color())
+
+        return None
+
+
+class ParasiteAxis(BaseFigure):
+
+    @property
+    def left(self) -> Axes:
+        return self.axes["left"]
+
+    @property
+    def right(self) -> Axes:
+        return self.axes["right"]
+
+    @property
+    def parax(self) -> Axes:
+        return self.axes["parasite"]
+
+    def custom_configuration(self) -> None:
+
+        __right = self.axes["left"].twinx()
+        assert isinstance(__right, Axes)
+        self.axes["right"] = __right
+
+        __parax = self.axes["left"].twinx()
+        assert isinstance(__parax, Axes)
+        self.axes["parasite"] = __parax
+        self.axes["parasite"].spines.right.set_position(("axes", 1.2))
+
+        return None
+
+    def custom_postprocessing(self) -> None:
+
+        # Add color indicator to label
+        lines = self.axes["right"].get_lines()
+        if len(lines) > 1:
+            raise ValueError("Don't plot more than one line in the right axis.")
+        self.axes["right"].yaxis.label.set_color(lines[-1].get_color())
+
+        lines = self.axes["parasite"].get_lines()
+        if len(lines) > 1:
+            raise ValueError("Don't plot more than one line in the parasite axis.")
+        self.axes["parasite"].yaxis.label.set_color(lines[-1].get_color())
+
+        return None
+
+
+class Plot3D(BaseFigure):
+
+    @property
+    def ax(self) -> Axes:
+        return self.axes["left"]
+
+    def generate_subplot(self) -> Axes:
+        ax = self.figure.add_subplot(
+            projection="3d", proj_type=self.setup.projection, box_aspect=(1, 1, 1)
+        )
+        return ax
+
+    def line(
+        self,
+        x: Array | Scalar,
+        y: Optional[Array | Scalar] = None,
+        z: Optional[Array | Scalar] = None,
+        fmt: str = "-",
+        width: Optional[float] = None,
+        markersize: Optional[float] = None,
+        color: Optional[str] = None,
+        alpha: float = 1.0,
+        label: Optional[str] = None,
+        axis: str = "left",
+    ) -> None:
+
+        assert y is not None and z is not None
+        (line,) = self.axes[axis].plot(
+            x,
+            y,
+            z,
+            fmt,
+            linewidth=width,
+            markersize=markersize,
+            color=color,
+            alpha=alpha,
+            label=label,
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "line", color, line)
+
+        return None
+
+
+class Mosaic(Canvas):
+
+    def __init__(self, mosaic: str, setup: PlotSetup | None = None) -> None:
+        super().__init__(mosaic, setup if setup is not None else PlotSetup())
+
+    def subplot(
+        self, setup: PlotSetup | None = None, generator: type[PlotType] = SingleAxis
+    ) -> PlotType:
+
+        if setup is None:
+            setup = PlotSetup()
+
+        return generator(setup, next(self.subfigures))

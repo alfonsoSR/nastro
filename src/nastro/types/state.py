@@ -290,24 +290,19 @@ class GenericState[U: (Double, Vector)]:
         # Load output
         if path.suffix == ".npy":
             return cls(*np.load(path))
-        elif path.suffix == ".dat":
-            data = np.loadtxt(path).T
-            if data.shape[0] == 6:
-                return cls(*data)
-            elif data.shape[0] >= 7:
-                return cls(*data[1:7])
-            else:
-                raise ValueError("Failed to load state vector. Invalid data shape.")
         else:
             raise ValueError("Failed to load state vector. Invalid file extension.")
 
     @classmethod
-    def from_tudat(cls, state_history: dict[Double, list[Double]]) -> Self:
+    def from_tudat(
+        cls, state_history: dict[Double, list[Double]], limits: tuple[int, int] = (0, 6)
+    ) -> Self:
         """Generate state vector from Tudat state history
 
         :param state_history: Dictionary with epochs and state components
+        :param limits: Range of state components to consider
         """
-        return cls(*np.array(list(state_history.values())).T[:6])
+        return cls(*np.array(list(state_history.values())).T[limits[0] : limits[1]])
 
     # Frame conversions
     def transform(self) -> Self:
