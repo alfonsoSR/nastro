@@ -8,6 +8,7 @@ Physical and mathematical constants and units taken from SciPy.
 ``pi``, ``twopi``, ``halfpi``           Pi and multiples
 ``c``                                   speed of light in vacuum
 ``G``                                   Newtonian constant of gravitation
+``g0``                                  Standard acceleration of gravity
 ``degree``                              degree in radians
 ``arcmin``                              arc minute in radians
 ``arcsec``                              arc second in radians
@@ -35,6 +36,7 @@ halfpi = 0.5 * pi
 # Physical constants
 c = clight = sc.speed_of_light
 G = sc.gravitational_constant
+g0 = 9.81
 
 # Angles in radians
 degree = pi / 180.0

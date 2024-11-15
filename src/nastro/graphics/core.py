@@ -1,10 +1,12 @@
 from matplotlib import pyplot as plt
 from typing import Literal, Self, Iterator, Any, TypeVar, TypeAlias, Sequence, Optional
-from matplotlib.gridspec import GridSpec
+from matplotlib.gridspec import GridSpec, SubplotSpec
 import numpy as np
 from matplotlib.figure import SubFigure, Figure as mplFigure
 from matplotlib.axes import Axes
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D, axes3d
+from matplotlib import _api
+
 import matplotlib.cbook as cbook
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +15,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from ..types import Scalar, Array
 from matplotlib.rcsetup import cycler
+import matplotlib.transforms as mtra
 
 PlotType = TypeVar("PlotType", bound="BaseFigure")
 FigureLike: TypeAlias = SubFigure | mplFigure
@@ -57,6 +60,20 @@ class Artist:
 @dataclass
 class PlotSetup:
 
+    # Canvas configuration
+    canvas_color: str | None = None
+    canvas_size: tuple[float, float] = (7, 4)
+    canvas_layout: Literal["tight", "constrained", "none", "compressed"] = "constrained"
+    canvas_title: str | None = None
+
+    # Figure configuration
+    subfigure_color: Optional[str] = None
+    subfigure_edgecolor: Optional[str] = None
+    subfigure_edgewidth: float = 0.0
+    subfigure_title: Optional[str] = None
+    h_padding: float = 25 / 72
+    w_padding: float = 30 / 72
+
     # Basic figure configuration
     figsize: tuple[float, float] = (7, 4)
     layout: Literal["tight", "constrained", "none", "compressed"] = "compressed"
@@ -91,14 +108,20 @@ class PlotSetup:
     rlim: tuple[float, float] | None = None
     plim: tuple[float, float] | None = None
 
-    xscilimits: tuple[int, int] = (-2, 2)
-    yscilimits: tuple[int, int] = (-2, 2)
-    zscilimits: tuple[int, int] = (-2, 2)
-    rscilimits: tuple[int, int] = (-2, 2)
-    pscilimits: tuple[int, int] = (-2, 2)
+    scilimits: tuple[int, int] = (-2, 2)
+    scilimits_x: Optional[tuple[int, int]] = None
+    scilimits_y: Optional[tuple[int, int]] = None
+    scilimits_z: Optional[tuple[int, int]] = None
+    scilimits_r: Optional[tuple[int, int]] = None
+    scilimits_p: Optional[tuple[int, int]] = None
 
     grid: bool = True
     grid_alpha: float = 0.15
+
+    minor_ticks: bool = True
+    minor_ticks_x: Optional[bool] = None
+    minor_ticks_y: Optional[bool] = None
+    minor_ticks_z: Optional[bool] = None
 
     show_axes: bool = True
 
@@ -126,29 +149,59 @@ class PlotSetup:
 
         return new
 
+    def __post_init__(self) -> None:
+
+        # Minor ticks
+        if self.minor_ticks_x is None:
+            self.minor_ticks_x = self.minor_ticks
+        if self.minor_ticks_y is None:
+            self.minor_ticks_y = self.minor_ticks
+        if self.minor_ticks_z is None:
+            self.minor_ticks_z = self.minor_ticks
+
+        # Scientific notation in labels
+        if self.scilimits_x is None:
+            self.scilimits_x = self.scilimits
+        if self.scilimits_y is None:
+            self.scilimits_y = self.scilimits
+        if self.scilimits_z is None:
+            self.scilimits_z = self.scilimits
+        if self.scilimits_r is None:
+            self.scilimits_r = self.scilimits
+        if self.scilimits_p is None:
+            self.scilimits_p = self.scilimits
+
+        return None
+
 
 class Canvas:
+    """Blank window in which stuff is drawn"""
 
     def __init__(self, mosaic: str, setup: PlotSetup) -> None:
 
         self.canvas_setup = setup
         self.canvas = plt.figure(
-            figsize=self.canvas_setup.figsize,
-            layout=self.canvas_setup.layout,
-            facecolor=self.canvas_setup.figcolor,
+            figsize=self.canvas_setup.canvas_size,
+            layout=self.canvas_setup.canvas_layout,
+            facecolor=self.canvas_setup.canvas_color,
         )
-        if self.canvas_setup.title is not None:
-            self.canvas.suptitle(self.canvas_setup.title)
+
+        if self.canvas_setup.canvas_title is not None:
+            self.canvas.suptitle(self.canvas_setup.canvas_title)
 
         gridspec, structure = self.__generate_mosaic(mosaic)
-        self.subfigures = iter(
-            self.canvas.add_subfigure(gridspec[sti]) for sti in structure
-        )
+        self.canvas_gridspec = gridspec
+        self.canvas_structure = structure
+
+        # self.subfigures = iter(
+        #     self.canvas.add_subfigure(gridspec[sti]) for sti in structure
+        # )
 
         return None
 
     def __make_array(self, inp):
-        """FROM matplotlib.subplot_mosaic"""
+        """Array representation of mosaic string"""
+
         r0, *rest = inp
         if isinstance(r0, str):
             raise ValueError("List mosaic specification must be 2D")
@@ -165,6 +218,7 @@ class Canvas:
         for j, r in enumerate(inp):
             for k, v in enumerate(r):
                 out[j, k] = v
+
         return out
 
     def __identify_keys_and_nested(self, mosaic) -> Any:
@@ -183,7 +237,7 @@ class Canvas:
         return tuple(unique_ids), nested
 
     def __do_layout(self, gs, mosaic, unique_ids, nested):
-        """FROM matplotlib.subplot_mosaic"""
+        """Generates figure layout from mosaic array"""
 
         this_level = dict()
 
@@ -246,7 +300,7 @@ class Canvas:
             plt.show()
 
         print(f"Canvas closed.")
-        plt.close(self.canvas)
+        plt.close()
 
         return True
 
@@ -266,7 +320,7 @@ class BaseFigure(Canvas):
         if _figure is None:
             self.is_subplot = False
             super().__init__("a", setup)
-            self.figure = next(self.subfigures)
+            self.figure = self.canvas
         else:
             self.is_subplot = True
             self.figure = _figure
@@ -346,6 +400,7 @@ class BaseFigure(Canvas):
     def common_postprocessing(self) -> None:
 
         # Colors
+        self.cycler = iter(COLOR_CYCLER)
         for artist in self.artists.values():
 
             match artist.type:
@@ -392,8 +447,15 @@ class BaseFigure(Canvas):
                             shrink=self.setup.colorbar_shrink,
                         )
 
+                case "patch":
+                    color = self.next_color() if artist.color is None else artist.color
+                    artist.object.set_color(color)
+
                 case "contour":
                     pass
+
+                case "surface":
+                    self.next_color()
 
                 case _:
                     color = self.next_color() if artist.color is None else artist.color
@@ -406,14 +468,16 @@ class BaseFigure(Canvas):
             axis.tick_params(direction="in", which="both")
             if axis.get_yscale() == "linear":
                 axis.ticklabel_format(
-                    axis="y", scilimits=self.setup.yscilimits, useMathText=True
+                    axis="y", scilimits=self.setup.scilimits_y, useMathText=True
                 )
-                axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+                if self.setup.minor_ticks_y:
+                    axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
             if axis.get_xscale() == "linear":
                 axis.ticklabel_format(
-                    axis="x", scilimits=self.setup.xscilimits, useMathText=True
+                    axis="x", scilimits=self.setup.scilimits_x, useMathText=True
                 )
-                axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+                if self.setup.minor_ticks_x:
+                    axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
 
             if not self.setup.show_axes:
                 axis.axis("off")
@@ -703,6 +767,20 @@ class BaseFigure(Canvas):
 
         return None
 
+    def colormap(self, x: Array, y: Array, z: Array, cmap: str = "GnBu") -> None:
+
+        map = self.axes["left"].pcolormesh(x, y, z, cmap=cmap)
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist("left", "image", None, map)
+
+        return None
+
+    def patch(self, patch) -> None:
+
+        patch = self.axes["left"].add_patch(patch)
+        name = f"a{len(self.artists)}"
+        self.artists[name] = Artist("left", "patch", None, patch)
+
     def contour(
         self,
         x: Array,
@@ -829,15 +907,39 @@ class ParasiteAxis(BaseFigure):
 
 class Plot3D(BaseFigure):
 
-    @property
-    def ax(self) -> Axes:
-        return self.axes["left"]
+    def __init__(self, setup: PlotSetup, _figure: FigureLike | None = None) -> None:
+
+        setup.minor_ticks_x = False
+        setup.minor_ticks_y = False
+        setup.minor_ticks_z = False
+        setup.minor_ticks = False
+
+        super().__init__(setup, _figure)
 
     def generate_subplot(self) -> Axes:
+
         ax = self.figure.add_subplot(
-            projection="3d", proj_type=self.setup.projection, box_aspect=(1, 1, 1)
+            projection="3d",
+            proj_type=self.setup.projection,
+            box_aspect=(1, 1, 1),
+            azim=50,
         )
         return ax
+
+    def custom_postprocessing(self) -> None:
+
+        ax: Any = self.axes["left"]
+
+        if ax.get_zscale() == "linear":
+            ax.ticklabel_format(
+                axis="z", scilimits=self.setup.scilimits_z, useMathText=True
+            )
+            if self.setup.minor_ticks_z:
+                ax.zaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        layout_engine = self.figure.get_layout_engine()
+        assert layout_engine is not None
+        layout_engine.set(w_pad=self.setup.w_padding, h_pad=self.setup.h_padding)  # type: ignore
 
     def line(
         self,
@@ -871,17 +973,51 @@ class Plot3D(BaseFigure):
 
         return None
 
+    def surface(
+        self,
+        x: Array,
+        y: Array,
+        z: Array,
+        color: Optional[str] = None,
+        alpha: float = 1.0,
+        label: Optional[str] = None,
+        axis: str = "left",
+    ) -> None:
+
+        if color is None:
+            for _ in range(len(self.artists.keys())):
+                self.next_color()
+            color = self.next_color()
+        surface = self.axes[axis].plot_surface(  # type: ignore
+            x, y, z, color=color, alpha=alpha, label=label
+        )
+
+        name = label if label is not None else f"a{len(self.artists)}"
+        self.artists[name] = Artist(axis, "surface", color, surface)
+
+        return None
+
 
 class Mosaic(Canvas):
 
-    def __init__(self, mosaic: str, setup: PlotSetup | None = None) -> None:
+    def __init__(self, mosaic: str, setup: Optional[PlotSetup] = None) -> None:
         super().__init__(mosaic, setup if setup is not None else PlotSetup())
 
     def subplot(
-        self, setup: PlotSetup | None = None, generator: type[PlotType] = SingleAxis
+        self, setup: Optional[PlotSetup] = None, generator: type[PlotType] = SingleAxis
     ) -> PlotType:
 
         if setup is None:
             setup = PlotSetup()
 
-        return generator(setup, next(self.subfigures))
+        subfigure = self.canvas.add_subfigure(
+            self.canvas_gridspec[next(self.canvas_structure)],
+            facecolor=setup.subfigure_color,
+            edgecolor=setup.subfigure_edgecolor,
+            linewidth=setup.subfigure_edgewidth,
+        )
+
+        if setup.subfigure_title:
+            subfigure.suptitle(setup.subfigure_title)
+
+        return generator(setup, subfigure)

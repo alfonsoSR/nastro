@@ -11,6 +11,6 @@ The following modules are available:
 ================== ==================================================
 """
 
-from . import types, constants, catalog
+from . import types, constants, catalog, graphics
 
-__all__ = ["types", "constants", "catalog"]
+__all__ = ["types", "constants", "catalog", "graphics"]
