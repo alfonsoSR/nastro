@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import Sequence, TypeVar, Any, TypeGuard
 
-Scalar = int | float | np.float_ | np.int_
+Scalar = int | float | np.floating | np.integer
 Double = float | np.float64
 Vector = npt.NDArray[np.float64]
 Array = npt.NDArray[Any] | Sequence[int | float]
