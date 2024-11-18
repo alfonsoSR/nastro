@@ -352,6 +352,13 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
         return np.linalg.norm(self.r_vec, axis=0)
 
     @property
+    def r_uvec(self) -> Vector:
+        """Cartesian position unit vector as numpy array"""
+        if np.any(self.r_mag == 0.0):
+            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+        return self.r_vec / self.r_mag
+
+    @property
     def v_vec(self) -> Vector:
         """Cartesian velocity vector as numpy array"""
         return np.array([self.dx, self.dy, self.dz])
@@ -360,6 +367,13 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
     def v_mag(self) -> U:
         """Magnitude of the velocity vector"""
         return np.linalg.norm(self.v_vec, axis=0)
+
+    @property
+    def v_uvec(self) -> Vector:
+        """Cartesian velocity unit vector as numpy array"""
+        if np.any(self.v_mag == 0.0):
+            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+        return self.v_vec / self.v_mag
 
     def to_keplerian(self, mu: Double) -> "KeplerianState":
         """Conversion to keplerian state vector
@@ -465,6 +479,20 @@ class CartesianStateDerivative[U: (Double, Vector)](GenericState[U]):
     def a_mag(self) -> U:
         """Magnitude of the acceleration vector"""
         return np.linalg.norm(self.a_vec, axis=0)
+
+    @property
+    def v_uvec(self) -> Vector:
+        """Cartesian velocity unit vector as numpy array"""
+        if np.any(self.v_mag == 0.0):
+            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+        return self.v_vec / self.v_mag
+
+    @property
+    def a_uvec(self) -> Vector:
+        """Cartesian acceleration unit vector as numpy array"""
+        if np.any(self.a_mag == 0.0):
+            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+        return self.a_vec / self.a_mag
 
     def times_dt(self, dt: Double) -> CartesianState:
         """Change in cartesian state over interval dt

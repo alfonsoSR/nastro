@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nastro"
-version = "0.0.3"
+version = "0.0.4"
 description = "Numerical astrodynamics"
 authors = [
     { name = "Alfonso Sánchez Rodríguez", email = "alfonso.sr.trabajo@gmail.com" }
