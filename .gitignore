@@ -16,5 +16,4 @@ __state.py
 
 # Sphinx
 build
-generated
 *tmp*

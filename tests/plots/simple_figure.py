@@ -1,4 +1,4 @@
-import nastro.plots as pp
+import nastro.graphics as ng
 import numpy as np
 
 if __name__ == "__main__":
@@ -10,52 +10,60 @@ if __name__ == "__main__":
     error = np.abs(np.random.normal(0.0, 0.1, x.shape))
     xbar = np.arange(8)
     ybar = np.random.normal(5, 2, 8)
-    ticks = ["a", "b", "c", "d", "e", "f", "g", "h"]
     gen = np.random.default_rng(1234797)
 
     # Create figure
-    figure_setup = pp.PlotSetup(
-        figsize=(12, 7),
+    figure_setup = ng.PlotSetup(
+        canvas_size=(12, 7),
         title="A simple figure with different types of subplots",
         save=False,
         dir=".",
         name="plots.png",
         show=True,
     )
-    a_setup = pp.PlotSetup(ylabel="left", rlabel="right", plabel="parasite")
-    c_setup = pp.PlotSetup(grid=False)
-    d_setup = pp.PlotSetup(ylabel="sin(x)", rlabel="cos(x)")
+    a_setup = ng.PlotSetup(ylabel="left", rlabel="right", plabel="parasite")
+    c_setup = ng.PlotSetup(grid=False)
+    d_setup = ng.PlotSetup(ylabel="sin(x)", rlabel="cos(x)")
 
-    with pp.Mosaic("ab;cd;ef", figure_setup) as fig:
+    with ng.SingleAxis(figure_setup) as fig:
+        fig.line(x, x**2, label="x^2")
 
-        with fig.add_subplot(a_setup, pp.ParasiteAxis) as a:
+    fig.line(x, x**3, label="x^3")
 
-            a.add_line(x, x, fmt=".-", markersize=2, label="x")
-            a.add_line(x, x**2, fmt="--", axis="right", label="x^2")
-            a.add_line(x, x**3, axis="parasite", label="x^3")
+    exit(0)
 
-        with fig.add_subplot(generator=pp.SingleAxis) as b:
+    with ng.Mosaic("ab;cd;ef", figure_setup) as fig:
 
-            b.add_line(x, y, label="sin")
-            b.add_line(x, z, label="cos")
-            b.add_boundary(0.5, line="sin", follow=True)
-            b.add_boundary(0.25, line="sin", follow=True, alpha=0.3)
+        with fig.subplot(a_setup, ng.ParasiteAxis) as a:
 
-        with fig.add_subplot(c_setup, pp.SingleAxis) as c:
+            a.line(x, x, fmt=".-", markersize=2, label="x")
+            a.line(x, x**2, fmt="--", axis="right", label="x^2")
+            a.line(x, x**3, axis="parasite", label="x^3")
 
-            c.add_barplot(xbar, ybar, ticks=ticks)
+        with fig.subplot(generator=ng.SingleAxis) as b:
 
-        with fig.add_subplot(d_setup, pp.DoubleAxis) as d:
+            b.line(x, y, label="sin")
+            b.line(x, z, label="cos")
+            b.boundary(0.5, reference="sin")
+            b.boundary(0.25, reference="sin", alpha=0.3)
 
-            d.add_errorbar(x, y, np.abs(gen.normal(0.0, 0.1, x.shape)))
-            d.add_errorbar(x, z, np.abs(gen.normal(0.0, 0.1, x.shape)), axis="right")
-            d.add_line(x, 0.8 * y)
+        with fig.subplot(c_setup, ng.SingleAxis) as c:
 
-        with fig.add_subplot(generator=pp.DoubleAxis) as e:
+            c.bar(xbar, ybar)
 
-            e.add_step(x, y, fmt=".-")
-            e.add_step(x, z, axis="right")
+        with fig.subplot(d_setup, ng.DoubleAxis) as d:
 
-        with fig.add_subplot() as f:
+            d.errorbar(x, y, np.abs(gen.normal(0.0, 0.1, x.shape)))
+            d.errorbar(
+                x, z, np.abs(gen.normal(0.0, 0.1, x.shape)), axis="right"
+            )
+            d.line(x, 0.8 * y)
 
-            f.add_horizontal_barplot(xbar[:4], ybar[:4], ticks=ticks[:4])
+        with fig.subplot(generator=ng.DoubleAxis) as e:
+
+            e.step(x, y, fmt=".-")
+            e.step(x, z, axis="right")
+
+        with fig.subplot() as f:
+
+            f.barh(xbar[:4], ybar[:4])

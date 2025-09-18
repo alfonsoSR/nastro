@@ -3,6 +3,7 @@ from .. import types as nt
 from typing import Self
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure as mplFigure
 from matplotlib.lines import Line2D
@@ -15,6 +16,8 @@ from mpl_toolkits.mplot3d.art3d import Line3D
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
+
+# NOTE: DEPRECATED - ONLY KEPT FOR DOCSTRINGS
 
 # TODO: ADD DOCSTRINGS TO PUBLIC METHODS
 # TODO: SUPPORT FOR 3D PLOTS
@@ -179,6 +182,8 @@ class PlotSetup:
     cbar_label: str | None = None
     cbar_shrink: float = 1.0
 
+    formatter_limits: tuple[int, int] = (-1, 1)
+
     legend: bool = True
     legend_location: str = "best"
     legend_title: str | None = None
@@ -186,6 +191,8 @@ class PlotSetup:
 
     grid: bool = False
     grid_alpha: float = 0.15
+
+    hidden_axes: bool = False
 
     def __post_init__(self) -> None:
 
@@ -448,6 +455,45 @@ class Plot(BaseFigure):
 
         return None
 
+    def add_limits(
+        self,
+        low: nt.Double,
+        high: nt.Double,
+        color: str | None = None,
+        alpha: float = 0.1,
+        label: str | None = None,
+        axis: str = "left",
+    ) -> None:
+        """Vertical boundary
+
+        Generates a colored region between two vertical lines spanning the entire
+        height of the plot.
+
+        :param low: Lower limit of the boundary.
+        :param high: Upper limit of the boundary.
+        :param color: Color of the boundary.
+        :param alpha: Transparency of the boundary.
+        :param label: Label to identify the boundary in the legend.
+        :param axis: Axis to plot the boundary.
+        """
+
+        boundary = self.axes_dict[axis].add_artist(
+            Rectangle(
+                (-1e20, low),  # type: ignore
+                2e20,
+                high - low,  # type: ignore
+                alpha=alpha,
+                color=color,
+                label=label,
+            )
+        )
+
+        out = (axis, (None, color, boundary))
+        name = label if label is not None else f"vbound-{len(self.artists) + 1}"
+        self.artists[name] = out
+
+        return None
+
     def add_vertical_boundary(
         self,
         low: nt.Double,
@@ -659,6 +705,41 @@ class Plot(BaseFigure):
                     self.setup.pticks_idx, self.setup.pticks
                 )
 
+        # WEIRD BEHAVIOR OF FORMATTERS
+        for axis in self.axes_dict.values():
+            axis.tick_params(which="both", direction="in")
+            if axis.get_yscale() == "linear":
+                axis.ticklabel_format(
+                    axis="y",
+                    scilimits=self.setup.formatter_limits,
+                    useMathText=True,
+                )
+                axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            if axis.get_xscale() == "linear":
+                axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        if self.setup.hidden_axes:
+            for axis in self.axes_dict.values():
+                axis.axis("off")
+
+        # for axis in self.axes_dict.values():
+
+        #     # Tick configuration
+        #     axis.tick_params(which="both", direction="in")
+        #     if self.setup.xscale == "linear":
+        #         axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     if self.setup.yscale == "linear":
+        #         axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        # # Formatters
+        # for axis in self.axes_dict.values():
+        #     print(f"This happens")
+        #     axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #     axis.tick_params(which="both", direction="in")
+        #     axis.yaxis.set_major_formatter(self.setup.formatter)
+        #     axis.xaxis.set_major_formatter(self.setup.formatter)
+
         # Colors
         for key, (_, artist) in self.artists.items():
 
@@ -757,16 +838,10 @@ class Plot(BaseFigure):
         self.postprocess()
 
         if "right" in self.axes_dict.keys():
-            if len(self.axes_dict["right"].get_lines()) > 1:
-                raise ValueError("Attempted to plot multiple lines on the right axis")
             line = self.axes_dict["right"].get_lines()[-1]
             self.axes_dict["right"].yaxis.label.set_color(line.get_color())
 
         if "parasite" in self.axes_dict.keys():
-            if len(self.axes_dict["parasite"].get_lines()) > 1:
-                raise ValueError(
-                    "Attempted to plot multiple lines on the parasite axis"
-                )
             line = self.axes_dict["parasite"].get_lines()[-1]
             self.axes_dict["parasite"].yaxis.label.set_color(line.get_color())
 
@@ -781,7 +856,7 @@ class Plot(BaseFigure):
         if self.setup.show:
             plt.show(block=True)
 
-        plt.close("all")
+        plt.close()
 
         return None
 

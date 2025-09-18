@@ -2,14 +2,13 @@
 Constants
 ==========================================
 
-.. module:: nastro.constants
-
 Physical and mathematical constants and units taken from SciPy.
 
 ======================================= ===============================================
 ``pi``, ``twopi``, ``halfpi``           Pi and multiples
 ``c``                                   speed of light in vacuum
 ``G``                                   Newtonian constant of gravitation
+``g0``                                  Standard acceleration of gravity
 ``degree``                              degree in radians
 ``arcmin``                              arc minute in radians
 ``arcsec``                              arc second in radians
@@ -37,6 +36,7 @@ halfpi = 0.5 * pi
 # Physical constants
 c = clight = sc.speed_of_light
 G = sc.gravitational_constant
+g0 = 9.81
 
 # Angles in radians
 degree = pi / 180.0
@@ -52,7 +52,6 @@ year = day * 365
 julian_year = day * 365.25
 
 # Lengths in meters
-km = 1e3
 au = astronomical_unit = sc.astronomical_unit
 light_year = sc.light_year
 parsec = sc.parsec

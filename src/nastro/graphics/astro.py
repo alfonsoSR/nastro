@@ -1,6 +1,7 @@
 from ..types import KeplerianState, CartesianState, Vector
 from ..constants import day
 from . import core as ng
+from typing import Optional
 
 # TODO: ADD DOCSTRINGS
 
@@ -11,18 +12,18 @@ class StatePlot(ng.Mosaic):
 
         super().__init__("ab;cd;ef", setup)
 
-        base_setup = self.setup.copy()
-        if self.setup.xlabel is None:
+        base_setup = self.canvas_setup.copy()
+        if self.canvas_setup.xlabel is None:
             base_setup.xlabel = "Days past initial epoch"
 
         subplot_setups = self.subplot_setup()
 
-        self.q1_subplot = self.add_subplot(setup=subplot_setups[0])
-        self.q2_subplot = self.add_subplot(setup=subplot_setups[1])
-        self.q3_subplot = self.add_subplot(setup=subplot_setups[2])
-        self.q4_subplot = self.add_subplot(setup=subplot_setups[3])
-        self.q5_subplot = self.add_subplot(setup=subplot_setups[4])
-        self.q6_subplot = self.add_subplot(setup=subplot_setups[5])
+        self.q1_subplot = self.subplot(setup=subplot_setups[0])
+        self.q2_subplot = self.subplot(setup=subplot_setups[1])
+        self.q3_subplot = self.subplot(setup=subplot_setups[2])
+        self.q4_subplot = self.subplot(setup=subplot_setups[3])
+        self.q5_subplot = self.subplot(setup=subplot_setups[4])
+        self.q6_subplot = self.subplot(setup=subplot_setups[5])
 
         return None
 
@@ -31,12 +32,19 @@ class StatePlot(ng.Mosaic):
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
 
-        self.q1_subplot.postprocess()
-        self.q2_subplot.postprocess()
-        self.q3_subplot.postprocess()
-        self.q4_subplot.postprocess()
-        self.q5_subplot.postprocess()
-        self.q6_subplot.postprocess()
+        # I did this quickly because I was working on something else
+        self.q1_subplot.common_postprocessing()
+        self.q1_subplot.custom_postprocessing()
+        self.q2_subplot.common_postprocessing()
+        self.q2_subplot.custom_postprocessing()
+        self.q3_subplot.common_postprocessing()
+        self.q3_subplot.custom_postprocessing()
+        self.q4_subplot.common_postprocessing()
+        self.q4_subplot.custom_postprocessing()
+        self.q5_subplot.common_postprocessing()
+        self.q5_subplot.custom_postprocessing()
+        self.q6_subplot.common_postprocessing()
+        self.q6_subplot.custom_postprocessing()
 
         super().__exit__(exc_type, exc_value, traceback)
         return None
@@ -55,19 +63,19 @@ class PlotState(StatePlot):
         if not is_dt:
             time = (time - time[0]) / day
 
-        self.q1_subplot.add_line(time, state.q1, fmt)
-        self.q2_subplot.add_line(time, state.q2, fmt)
+        self.q1_subplot.line(time, state.q1, fmt=fmt)
+        self.q2_subplot.line(time, state.q2, fmt=fmt)
 
         if isinstance(state, KeplerianState):
-            self.q3_subplot.add_line(time, state.i_deg, fmt)
-            self.q4_subplot.add_line(time, state.raan_deg, fmt)
-            self.q5_subplot.add_line(time, state.aop_deg, fmt)
-            self.q6_subplot.add_line(time, state.ta_deg, fmt)
+            self.q3_subplot.line(time, state.i_deg, fmt=fmt)
+            self.q4_subplot.line(time, state.raan_deg, fmt=fmt)
+            self.q5_subplot.line(time, state.aop_deg, fmt=fmt)
+            self.q6_subplot.line(time, state.ta_deg, fmt=fmt)
         else:
-            self.q3_subplot.add_line(time, state.q3, fmt)
-            self.q4_subplot.add_line(time, state.q4, fmt)
-            self.q5_subplot.add_line(time, state.q5, fmt)
-            self.q6_subplot.add_line(time, state.q6, fmt)
+            self.q3_subplot.line(time, state.q3, fmt=fmt)
+            self.q4_subplot.line(time, state.q4, fmt=fmt)
+            self.q5_subplot.line(time, state.q5, fmt=fmt)
+            self.q6_subplot.line(time, state.q6, fmt=fmt)
 
         return None
 
@@ -89,12 +97,12 @@ class CompareState(StatePlot):
             time = (time - time[0]) / day
 
         ds = orbit - reference
-        self.q1_subplot.add_line(time, ds.q1, fmt)
-        self.q2_subplot.add_line(time, ds.q2, fmt)
-        self.q3_subplot.add_line(time, ds.q3, fmt)
-        self.q4_subplot.add_line(time, ds.q4, fmt)
-        self.q5_subplot.add_line(time, ds.q5, fmt)
-        self.q6_subplot.add_line(time, ds.q6, fmt)
+        self.q1_subplot.line(time, ds.q1, fmt=fmt)
+        self.q2_subplot.line(time, ds.q2, fmt=fmt)
+        self.q3_subplot.line(time, ds.q3, fmt=fmt)
+        self.q4_subplot.line(time, ds.q4, fmt=fmt)
+        self.q5_subplot.line(time, ds.q5, fmt=fmt)
+        self.q6_subplot.line(time, ds.q6, fmt=fmt)
 
         return None
 
@@ -104,7 +112,7 @@ class PlotKeplerianState(PlotState):
 
     def subplot_setup(self) -> list[ng.PlotSetup]:
 
-        base_setup = self.setup.copy()
+        base_setup = self.canvas_setup.copy()
 
         a_setup = base_setup.copy()
         a_setup.ylabel = r"$a\ [m]$"
@@ -138,7 +146,7 @@ class PlotCartesianState(PlotState):
 
     def subplot_setup(self) -> list[ng.PlotSetup]:
 
-        base_setup = self.setup.copy()
+        base_setup = self.canvas_setup.copy()
 
         x_setup = base_setup.copy()
         x_setup.ylabel = r"$x\ [m]$"
@@ -166,7 +174,7 @@ class CompareCartesianStates(CompareState):
 
     def subplot_setup(self) -> list[ng.PlotSetup]:
 
-        base_setup = self.setup.copy()
+        base_setup = self.canvas_setup.copy()
 
         dx_setup = base_setup.copy()
         dx_setup.ylabel = r"$\Delta x\ [m]$"
@@ -194,7 +202,7 @@ class CompareKeplerianStates(CompareState):
 
     def subplot_setup(self) -> list[ng.PlotSetup]:
 
-        base_setup = self.setup.copy()
+        base_setup = self.canvas_setup.copy()
 
         da_setup = base_setup.copy()
         da_setup.ylabel = r"$\Delta a\ [m]$"
@@ -217,7 +225,7 @@ class CompareKeplerianStates(CompareState):
         return [da_setup, de_setup, di_setup, daop_setup, draan_setup, dta_setup]
 
 
-class PlotOrbit(ng.Base3D):
+class PlotOrbit(ng.BaseFigure):
 
     def add_orbit(
         self,
@@ -231,7 +239,7 @@ class PlotOrbit(ng.Base3D):
         axis: str = "left",
     ) -> None:
 
-        self.add_line(
+        self.line(
             state.x, state.y, state.z, fmt, width, markersize, color, alpha, label, axis
         )
 

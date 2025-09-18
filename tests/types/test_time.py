@@ -1,7 +1,8 @@
-from nastro.types.time import JulianDay, DeltaJD, CalendarDate
+from nastro.types.time import JulianDay, DeltaJD, CalendarDate, LEAP_SECONDS
 import nastro.constants as nc
 import numpy as np
 import pytest
+import math
 
 
 @pytest.mark.parametrize(
@@ -189,5 +190,52 @@ def test_jd2date() -> None:
     assert isinstance(converted_output, list)
     for expected, converted in zip(expected_ouput, converted_output):
         assert converted == expected
+
+    return None
+
+
+def test_leap_seconds() -> None:
+
+    # Test single values
+    for (low, _), expected in LEAP_SECONDS.items():
+        epoch = JulianDay(*math.modf(low), ref="MJD") + 2.0
+        assert epoch.leap_seconds == expected
+
+    # Test list of values
+    epochs = JulianDay(np.array([41400.0, 47200.0, 54900.0]), ref="MJD").leap_seconds
+    assert isinstance(epochs, np.ndarray)
+    for val, expected in zip(epochs, [10, 24, 34]):
+        assert val == expected
+
+    return None
+
+
+@pytest.mark.parametrize(
+    ("epoch", "week", "day"),
+    [
+        (CalendarDate(2024, 9, 9), 2331, 1),
+        (CalendarDate(2024, 9, 10), 2331, 2),
+        (CalendarDate(2024, 9, 11), 2331, 3),
+        (CalendarDate(2024, 9, 12), 2331, 4),
+        (CalendarDate(2024, 9, 13), 2331, 5),
+        (CalendarDate(2024, 9, 14), 2331, 6),
+        (CalendarDate(2024, 9, 15), 2332, 0),
+        (CalendarDate(2024, 3, 25), 2307, 1),
+    ],
+    ids=(
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+        "Extra",
+    ),
+)
+def test_gps_week_and_day(epoch: CalendarDate, week: int, day: int) -> None:
+
+    assert epoch.gps_week == week
+    assert epoch.week_day == day
 
     return None

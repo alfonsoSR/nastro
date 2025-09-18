@@ -7,6 +7,41 @@ from ..constants import day
 import traceback
 
 # from ..data.formats import EOP
+# Number of leap seconds for MJD intervals
+LEAP_SECONDS = {
+    (41317.0, 41499.0): 10,  # 1972 JAN 1
+    (41499.0, 41683.0): 11,  # 1972 JUL 1
+    (41683.0, 42048.0): 12,  # 1973 JAN 1
+    (42048.0, 42413.0): 13,  # 1974 JAN 1
+    (42413.0, 42778.0): 14,  # 1975 JAN 1
+    (42778.0, 43144.0): 15,  # 1976 JAN 1
+    (43144.0, 43509.0): 16,  # 1977 JAN 1
+    (43509.0, 43874.0): 17,  # 1978 JAN 1
+    (43874.0, 44239.0): 18,  # 1979 JAN 1
+    (44239.0, 44786.0): 19,  # 1980 JAN 1
+    (44786.0, 45151.0): 20,  # 1981 JUL 1
+    (45151.0, 45516.0): 21,  # 1982 JUL 1
+    (45516.0, 46247.0): 22,  # 1983 JUL 1
+    (46247.0, 47161.0): 23,  # 1985 JUL 1
+    (47161.0, 47892.0): 24,  # 1988 JAN 1
+    (47892.0, 48257.0): 25,  # 1990 JAN 1
+    (48257.0, 48804.0): 26,  # 1991 JAN 1
+    (48804.0, 49169.0): 27,  # 1992 JUL 1
+    (49169.0, 49534.0): 28,  # 1993 JUL 1
+    (49534.0, 50083.0): 29,  # 1994 JUL 1
+    (50083.0, 50630.0): 30,  # 1996 JAN 1
+    (50630.0, 51179.0): 31,  # 1997 JUL 1
+    (51179.0, 53736.0): 32,  # 1999 JAN 1
+    (53736.0, 54832.0): 33,  # 2006 JAN 1
+    (54832.0, 56109.0): 34,  # 2009 JAN 1
+    (56109.0, 57204.0): 35,  # 2012 JUL 1
+    (57204.0, 57754.0): 36,  # 2015 JUL 1
+    (57754.0, 60500.0): 37,  # 2017 JAN 1
+    (60500.0, float("inf")): 38,  # 2024 ??? ?
+}
+
+# Reference epoch for GNSS
+GNSS_REFERENCE_MJD = 44244.0
 
 
 class JulianDay[T: (nt.Double, nt.Vector)]:
@@ -114,6 +149,57 @@ class JulianDay[T: (nt.Double, nt.Vector)]:
     def dt(self) -> T:
         """Days past initial epoch"""
         return self.jd - self[0].jd
+
+    @property
+    def et(self) -> T:
+        """Ephemeris time"""
+        return (self.jd - type(self)(0.0, 0.0, ref="J2000").jd) * day
+
+    @property
+    def steps(self) -> T:
+        """Difference between consecutive epochs"""
+        return self.dt[1:] - self.dt[:-1]
+
+    @property
+    def leap_seconds(self) -> int | nt.Array:
+        """Leap seconds for current JD
+
+        Returns the difference between TAI and UTC_IERS for the current JD
+        """
+        if isinstance(self.mjd, np.ndarray):
+            return np.array(
+                [
+                    val
+                    for key, val in LEAP_SECONDS.items()
+                    for mjd in self.mjd
+                    if mjd >= key[0] and mjd < key[1]
+                ]
+            )
+        else:
+            for key, val in LEAP_SECONDS.items():
+                if self.mjd >= key[0] and self.mjd < key[1]:
+                    return val
+
+    @property
+    def gps_week(self) -> int:
+        """GPS week"""
+        if not self.scalar:
+            raise NotImplementedError(
+                "GPS calculation only implemented for scalar types"
+            )
+        return int(np.floor((self.mjd - GNSS_REFERENCE_MJD) / 7.0))
+
+    @property
+    def week_day(self) -> int:
+        """GPS-compatible week day
+
+        Sun = 0, Mon = 1, ..., Sat = 6
+        """
+        if not self.scalar:
+            raise NotImplementedError(
+                "Week day calculation only implemented for scalar types"
+            )
+        return (self.as_calendar().weekday() + 1) % 7  # type: ignore
 
     def __repr__(self) -> str:
 
@@ -375,10 +461,12 @@ class CalendarDate(datetime):
     def as_list(self) -> list[int]:
         return [self.year, self.month, self.day, self.hour, self.minute, self.second]
 
-    def as_jd(self) -> "JulianDay":
+    def as_jd(self, ref: Literal["J2000", "MJD"] | None = None) -> "JulianDay":
         """Conversion to Julian date and time
 
         Algorithm: Practical astrodynamics slides - 2.16
+
+        :param ref: Reference epoch
         """
 
         C = np.trunc((self.month - 14) / 12)
@@ -388,7 +476,10 @@ class CalendarDate(datetime):
         jd = jd0 - 0.5
         fr = self.hour / 24.0 + self.minute / 1440.0 + self.second / 86400.0
 
-        return JulianDay(jd, fr)
+        return JulianDay(jd, fr, ref=ref)
+
+    def __getattr__(self, name: str):
+        return self.as_jd().__getattribute__(name)
 
 
 # class JulianDate[T: (Double, Vector)]:
