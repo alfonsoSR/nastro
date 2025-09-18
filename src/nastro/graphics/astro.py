@@ -19,10 +19,10 @@ class StatePlot(ng.Mosaic):
         subplot_setups = self.subplot_setup()
 
         self.q1_subplot = self.subplot(setup=subplot_setups[0])
-        self.q2_subplot = self.subplot(setup=subplot_setups[1])
-        self.q3_subplot = self.subplot(setup=subplot_setups[2])
         self.q4_subplot = self.subplot(setup=subplot_setups[3])
+        self.q2_subplot = self.subplot(setup=subplot_setups[1])
         self.q5_subplot = self.subplot(setup=subplot_setups[4])
+        self.q3_subplot = self.subplot(setup=subplot_setups[2])
         self.q6_subplot = self.subplot(setup=subplot_setups[5])
 
         return None
@@ -82,9 +82,10 @@ class PlotState(StatePlot):
 
 class CompareState(StatePlot):
 
-    def compare_states[
-        T: (CartesianState, KeplerianState)
-    ](
+    def compare_states[T: (
+        CartesianState,
+        KeplerianState,
+    )](
         self,
         time: Vector,
         orbit: T,
@@ -222,7 +223,41 @@ class CompareKeplerianStates(CompareState):
         dta_setup = base_setup.copy()
         dta_setup.ylabel = r"$\Delta \theta\ [rad]$"
 
-        return [da_setup, de_setup, di_setup, daop_setup, draan_setup, dta_setup]
+        return [
+            da_setup,
+            de_setup,
+            di_setup,
+            daop_setup,
+            draan_setup,
+            dta_setup,
+        ]
+
+
+class CompareRswStates(CompareState):
+
+    def subplot_setup(self) -> list[ng.PlotSetup]:
+
+        base_setup = self.canvas_setup.copy()
+
+        dr_setup = base_setup.copy()
+        dr_setup.ylabel = r"$\Delta r\ [m]$"
+
+        ddr_setup = base_setup.copy()
+        ddr_setup.ylabel = r"$\Delta \dot{r}\ [m/s]$"
+
+        ds_setup = base_setup.copy()
+        ds_setup.ylabel = r"$\Delta s\ [m]$"
+
+        dds_setup = base_setup.copy()
+        dds_setup.ylabel = r"$\Delta \dot{s}\ [m/s]$"
+
+        dw_setup = base_setup.copy()
+        dw_setup.ylabel = r"$\Delta w\ [m]$"
+
+        ddw_setup = base_setup.copy()
+        ddw_setup.ylabel = r"$\Delta \dot{w}\ [m/s]$"
+
+        return [dr_setup, ddr_setup, ds_setup, dds_setup, dw_setup, ddw_setup]
 
 
 class PlotOrbit(ng.BaseFigure):
@@ -240,7 +275,16 @@ class PlotOrbit(ng.BaseFigure):
     ) -> None:
 
         self.line(
-            state.x, state.y, state.z, fmt, width, markersize, color, alpha, label, axis
+            state.x,
+            state.y,
+            state.z,
+            fmt,
+            width,
+            markersize,
+            color,
+            alpha,
+            label,
+            axis,
         )
 
         return None
