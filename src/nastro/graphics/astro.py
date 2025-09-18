@@ -257,7 +257,7 @@ class CompareRswStates(CompareState):
         ddw_setup = base_setup.copy()
         ddw_setup.ylabel = r"$\Delta \dot{w}\ [m/s]$"
 
-        return [dr_setup, ddr_setup, ds_setup, dds_setup, dw_setup, ddw_setup]
+        return [dr_setup, ds_setup, dw_setup, ddr_setup, dds_setup, ddw_setup]
 
 
 class PlotOrbit(ng.Plot3D):
