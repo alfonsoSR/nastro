@@ -1,22 +1,14 @@
-API reference
-================
-
-.. currentmodule:: nastro
-
-Nastro includes the following submodules
-
-=============  ==================================================
-`types`         Data types
-`plots`         Plotting utilities
-`constants`     Physical constants
-`catalog`       Properties of celestial bodies
-=============  ==================================================
+.. automodule:: nastro
+    :no-index:
+    :no-members:
+    :no-special-members:
+    :no-inherited-members:
 
 .. toctree::
-   :hidden:
-   :titlesonly:
+    :maxdepth: 1
+    :hidden:
+    :titlesonly:
 
-   Types <types>
-   Plots <plots>
-   Constants <constants>
-   Catalog  <catalog>
+    Catalog <catalog>
+    Constants <constants>
+    Types <types>
