@@ -260,7 +260,7 @@ class CompareRswStates(CompareState):
         return [dr_setup, ddr_setup, ds_setup, dds_setup, dw_setup, ddw_setup]
 
 
-class PlotOrbit(ng.BaseFigure):
+class PlotOrbit(ng.Plot3D):
 
     def add_orbit(
         self,

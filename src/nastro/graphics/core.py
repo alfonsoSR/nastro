@@ -1,5 +1,14 @@
 from matplotlib import pyplot as plt
-from typing import Literal, Self, Iterator, Any, TypeVar, TypeAlias, Sequence, Optional
+from typing import (
+    Literal,
+    Self,
+    Iterator,
+    Any,
+    TypeVar,
+    TypeAlias,
+    Sequence,
+    Optional,
+)
 from matplotlib.gridspec import GridSpec, SubplotSpec
 import numpy as np
 from matplotlib.figure import SubFigure, Figure as mplFigure
@@ -63,7 +72,9 @@ class PlotSetup:
     # Canvas configuration
     canvas_color: str | None = None
     canvas_size: tuple[float, float] = (7, 4)
-    canvas_layout: Literal["tight", "constrained", "none", "compressed"] = "constrained"
+    canvas_layout: Literal["tight", "constrained", "none", "compressed"] = (
+        "constrained"
+    )
     canvas_title: str | None = None
 
     # Figure configuration
@@ -281,7 +292,9 @@ class Canvas:
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
 
-        if exc_type is AttributeError and "NotImplementedType" in str(exc_value):
+        if exc_type is AttributeError and "NotImplementedType" in str(
+            exc_value
+        ):
             return True
         elif exc_type is not None:
             return False
@@ -291,7 +304,9 @@ class Canvas:
         if self.canvas_setup.save:
 
             if self.canvas_setup.dir is None or self.canvas_setup.name is None:
-                raise ValueError("Failed to save figure: missing filename or directory")
+                raise ValueError(
+                    "Failed to save figure: missing filename or directory"
+                )
             path = Path(self.canvas_setup.dir) / self.canvas_setup.name
             path.parent.mkdir(parents=True, exist_ok=True)
             self.canvas.savefig(path)
@@ -406,13 +421,21 @@ class BaseFigure(Canvas):
             match artist.type:
 
                 case "errorbar":
-                    color = self.next_color() if artist.color is None else artist.color
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     artist.object[0].set_color(color)
                     for cap in artist.object[2]:
                         cap.set_color(color)
 
                 case "step":
-                    color = self.next_color() if artist.color is None else artist.color
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     for line in artist.object:
                         line.set_color(color)
 
@@ -425,7 +448,11 @@ class BaseFigure(Canvas):
                         bar.set_color(self.next_color())
 
                 case "hist":
-                    color = self.next_color() if artist.color is None else artist.color
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     for bar in artist.object:
                         bar.set_color(color)
 
@@ -448,7 +475,11 @@ class BaseFigure(Canvas):
                         )
 
                 case "patch":
-                    color = self.next_color() if artist.color is None else artist.color
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     artist.object.set_color(color)
 
                 case "contour":
@@ -458,7 +489,11 @@ class BaseFigure(Canvas):
                     self.next_color()
 
                 case _:
-                    color = self.next_color() if artist.color is None else artist.color
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     artist.object.set_color(color)
 
         legend_handles = []
@@ -767,7 +802,9 @@ class BaseFigure(Canvas):
 
         return None
 
-    def colormap(self, x: Array, y: Array, z: Array, cmap: str = "GnBu") -> None:
+    def colormap(
+        self, x: Array, y: Array, z: Array, cmap: str = "GnBu"
+    ) -> None:
 
         map = self.axes["left"].pcolormesh(x, y, z, cmap=cmap)
         name = f"a{len(self.artists)}"
@@ -899,7 +936,9 @@ class ParasiteAxis(BaseFigure):
 
         lines = self.axes["parasite"].get_lines()
         if len(lines) > 1:
-            raise ValueError("Don't plot more than one line in the parasite axis.")
+            raise ValueError(
+                "Don't plot more than one line in the parasite axis."
+            )
         self.axes["parasite"].yaxis.label.set_color(lines[-1].get_color())
 
         return None
@@ -907,7 +946,11 @@ class ParasiteAxis(BaseFigure):
 
 class Plot3D(BaseFigure):
 
-    def __init__(self, setup: PlotSetup, _figure: FigureLike | None = None) -> None:
+    def __init__(
+        self,
+        setup: PlotSetup = PlotSetup(),
+        _figure: FigureLike | None = None,
+    ) -> None:
 
         setup.minor_ticks_x = False
         setup.minor_ticks_y = False
@@ -1004,7 +1047,9 @@ class Mosaic(Canvas):
         super().__init__(mosaic, setup if setup is not None else PlotSetup())
 
     def subplot(
-        self, setup: Optional[PlotSetup] = None, generator: type[PlotType] = SingleAxis
+        self,
+        setup: Optional[PlotSetup] = None,
+        generator: type[PlotType] = SingleAxis,
     ) -> PlotType:
 
         if setup is None:
