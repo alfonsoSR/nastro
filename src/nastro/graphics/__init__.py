@@ -48,6 +48,7 @@ from .astro import (
     CompareRswStates,
     PlotOrbit,
 )
+from . import shapes
 
 __all__ = [
     "PlotSetup",
@@ -62,4 +63,5 @@ __all__ = [
     "CompareKeplerianStates",
     "CompareRswStates",
     "PlotOrbit",
+    "shapes",
 ]
