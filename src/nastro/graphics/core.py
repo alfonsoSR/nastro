@@ -133,6 +133,11 @@ class PlotSetup:
     minor_ticks_x: Optional[bool] = None
     minor_ticks_y: Optional[bool] = None
     minor_ticks_z: Optional[bool] = None
+    show_tick_labels_x: bool = True
+    show_tick_labels_y: bool = True
+    show_tick_labels_z: bool = True
+    show_tick_labels_r: bool = True
+    show_tick_labels_p: bool = True
 
     show_axes: bool = True
 
@@ -151,14 +156,27 @@ class PlotSetup:
 
     def version(self, **params) -> "PlotSetup":
 
-        new = self.copy()
-        for param, value in params.items():
-            if hasattr(new, param):
-                setattr(new, param, value)
-            else:
-                raise ValueError(f"Invalid parameter: {param}")
+        # Get contents of original setup
+        contents = self.__dict__.copy()
 
-        return new
+        # Update contents with input
+        for param, value in params.items():
+
+            if param in contents:
+                contents[param] = value
+            else:
+                ValueError(f"Invalid parameter: {param}")
+
+        return PlotSetup(**contents)
+
+        # new = self.copy()
+        # for param, value in params.items():
+        #     if hasattr(new, param):
+        #         setattr(new, param, value)
+        #     else:
+        #         raise ValueError(f"Invalid parameter: {param}")
+
+        # return new
 
     def __post_init__(self) -> None:
 
@@ -322,6 +340,8 @@ class Canvas:
 
 class BaseFigure(Canvas):
 
+    _default_prefix: str = "ignored_artist"
+
     def __init__(
         self,
         setup: PlotSetup = PlotSetup(),
@@ -386,7 +406,10 @@ class BaseFigure(Canvas):
         if self.setup.xscale:
             self.axes["left"].set_xscale(self.setup.xscale)
         if self.setup.yscale:
-            self.axes["left"].set_yscale(self.setup.yscale)
+            if self.setup.yscale == "symlog":
+                self.axes["left"].set_yscale(self.setup.yscale, linthresh=1e-12)
+            else:
+                self.axes["left"].set_yscale(self.setup.yscale)
         if self.setup.zscale and isinstance(self.axes["left"], Axes3D):
             self.axes["left"].set_zscale(self.setup.zscale)  # type: ignore
         if self.setup.rscale and "right" in self.axes:
@@ -514,6 +537,14 @@ class BaseFigure(Canvas):
                 if self.setup.minor_ticks_x:
                     axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
 
+            # Do not show ticks if requested
+            if not self.setup.show_tick_labels_x:
+                axis.xaxis.set_major_formatter(ticker.NullFormatter())
+                axis.xaxis.set_major_formatter(ticker.NullFormatter())
+            if not self.setup.show_tick_labels_y:
+                axis.yaxis.set_major_formatter(ticker.NullFormatter())
+                axis.yaxis.set_minor_formatter(ticker.NullFormatter())
+
             if not self.setup.show_axes:
                 axis.axis("off")
 
@@ -557,6 +588,10 @@ class BaseFigure(Canvas):
 
         return True
 
+    def __default_artist_label(self) -> str:
+
+        return f"{self._default_prefix}{len(self.artists)}"
+
     def line(
         self,
         x: Array | Scalar,
@@ -582,7 +617,7 @@ class BaseFigure(Canvas):
             label=label,
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -611,7 +646,7 @@ class BaseFigure(Canvas):
             )
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "limits", color, boundary)
 
         return None
@@ -646,9 +681,9 @@ class BaseFigure(Canvas):
             color=color,
             alpha=alpha,
             label=label,
-        )
+        )  # type: ignore
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "limits", color, boundary)
 
         return None
@@ -677,7 +712,7 @@ class BaseFigure(Canvas):
             )
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "vlimits", color, boundary)
 
         return None
@@ -698,7 +733,7 @@ class BaseFigure(Canvas):
             x, y, z=z, yerr=error, fmt=fmt, color=color, label=label
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "errorbar", color, errorbar)
 
         return None
@@ -722,7 +757,7 @@ class BaseFigure(Canvas):
             color=color,
             label=label,
         )
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "step", color, step)
 
         return None
@@ -737,7 +772,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         bar = self.axes[axis].bar(x, height, width=width, tick_label=ticks)
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist(axis, "bar", None, bar)
 
         return None
@@ -752,7 +787,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         bar = self.axes[axis].barh(y, width, height=height, tick_label=ticks)
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist(axis, "barh", None, bar)
 
         return None
@@ -783,7 +818,7 @@ class BaseFigure(Canvas):
             alpha=alpha,
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "hist", color, histogram)
 
         return None
@@ -797,7 +832,7 @@ class BaseFigure(Canvas):
             raise ValueError("Data must be square.")
 
         image = self.axes["left"].imshow(data, cmap=cmap)
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist("left", "image", None, image)
 
         return None
@@ -807,7 +842,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         map = self.axes["left"].pcolormesh(x, y, z, cmap=cmap)
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist("left", "image", None, map)
 
         return None
@@ -815,7 +850,7 @@ class BaseFigure(Canvas):
     def patch(self, patch) -> None:
 
         patch = self.axes["left"].add_patch(patch)
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist("left", "patch", None, patch)
 
     def contour(
@@ -831,7 +866,7 @@ class BaseFigure(Canvas):
         contours = self.axes["left"].contour(
             x, y, z, levels=levels, colors=color, cmap=cmap
         )
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist("left", "contour", color, contours)
 
         return None
@@ -849,7 +884,7 @@ class BaseFigure(Canvas):
         contours = self.axes["left"].contourf(
             x, y, z, levels=levels, colors=color, cmap=cmap
         )
-        name = f"a{len(self.artists)}"
+        name = self.__default_artist_label()
         self.artists[name] = Artist("left", "cmap", color, contours)
 
         return None
@@ -892,9 +927,14 @@ class DoubleAxis(BaseFigure):
 
         # Add color indicator to label
         lines = self.axes["right"].get_lines()
-        if len(lines) > 1:
-            raise ValueError("Don't plot more than one line in the right axis.")
+        # if len(lines) > 1:
+        #     raise ValueError("Don't plot more than one line in the right axis.")
         self.axes["right"].yaxis.label.set_color(lines[0].get_color())
+
+        # Do not show ticks if requested
+        if not self.setup.show_tick_labels_r:
+            self.axes["right"].yaxis.set_major_formatter(ticker.NullFormatter())
+            self.axes["right"].yaxis.set_minor_formatter(ticker.NullFormatter())
 
         return None
 
@@ -940,6 +980,48 @@ class ParasiteAxis(BaseFigure):
                 "Don't plot more than one line in the parasite axis."
             )
         self.axes["parasite"].yaxis.label.set_color(lines[-1].get_color())
+
+        # Do not show ticks if requested
+        if not self.setup.show_tick_labels_r:
+            self.axes["right"].yaxis.set_major_formatter(ticker.NullFormatter())
+            self.axes["right"].yaxis.set_minor_formatter(ticker.NullFormatter())
+        if not self.setup.show_tick_labels_p:
+            self.axes["parasite"].yaxis.set_major_formatter(
+                ticker.NullFormatter()
+            )
+            self.axes["parasite"].yaxis.set_minor_formatter(
+                ticker.NullFormatter()
+            )
+
+        return None
+
+
+class Legend(BaseFigure):
+
+    def __init__(
+        self, setup: PlotSetup = PlotSetup(), _figure: FigureLike | None = None
+    ) -> None:
+
+        setup.show_axes = False
+        setup.legend_location = "center"
+        setup.ylim = (1, 2)
+        setup.xlim = (1, 2)
+
+        super().__init__(setup, _figure)
+
+        return None
+
+    def add_legend(self, figure: BaseFigure) -> None:
+
+        # Disable legend from figure
+        figure.setup.legend = False
+
+        for key, val in figure.artists.items():
+
+            if key.startswith(self._default_prefix):
+                continue
+
+            self.line(0, 0, fmt="o", color=val.color, label=key)
 
         return None
 
@@ -1011,7 +1093,7 @@ class Plot3D(BaseFigure):
             label=label,
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -1035,7 +1117,7 @@ class Plot3D(BaseFigure):
             x, y, z, color=color, alpha=alpha, label=label
         )
 
-        name = label if label is not None else f"a{len(self.artists)}"
+        name = label if label is not None else self.__default_artist_label()
         self.artists[name] = Artist(axis, "surface", color, surface)
 
         return None

@@ -39,6 +39,8 @@ from .core import (
     DoubleAxis,
     ParasiteAxis,
     Plot3D,
+    BaseFigure,
+    Legend,
 )
 from .astro import (
     PlotCartesianState,
@@ -51,11 +53,13 @@ from .astro import (
 from . import shapes
 
 __all__ = [
+    "BaseFigure",
     "PlotSetup",
     "Mosaic",
     "SingleAxis",
     "DoubleAxis",
     "ParasiteAxis",
+    "Legend",
     "Plot3D",
     "PlotCartesianState",
     "PlotKeplerianState",
