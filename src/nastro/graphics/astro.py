@@ -1,9 +1,6 @@
 from ..types import KeplerianState, CartesianState, Vector
 from ..constants import day
-from . import core as ng
-from typing import Optional
-
-# TODO: ADD DOCSTRINGS
+from . import figures as ng
 
 
 class StatePlot(ng.Mosaic):
@@ -32,19 +29,23 @@ class StatePlot(ng.Mosaic):
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
 
-        # I did this quickly because I was working on something else
-        self.q1_subplot.common_postprocessing()
-        self.q1_subplot.custom_postprocessing()
-        self.q2_subplot.common_postprocessing()
-        self.q2_subplot.custom_postprocessing()
-        self.q3_subplot.common_postprocessing()
-        self.q3_subplot.custom_postprocessing()
-        self.q4_subplot.common_postprocessing()
-        self.q4_subplot.custom_postprocessing()
-        self.q5_subplot.common_postprocessing()
-        self.q5_subplot.custom_postprocessing()
-        self.q6_subplot.common_postprocessing()
-        self.q6_subplot.custom_postprocessing()
+        for idx in range(1, 7):
+            getattr(self, f"q{idx}_subplot").common_postprocessing()
+            getattr(self, f"q{idx}_subplot").custom_postprocessing()
+
+        # # I did this quickly because I was working on something else
+        # self.q1_subplot.common_postprocessing()
+        # self.q1_subplot.custom_postprocessing()
+        # self.q2_subplot.common_postprocessing()
+        # self.q2_subplot.custom_postprocessing()
+        # self.q3_subplot.common_postprocessing()
+        # self.q3_subplot.custom_postprocessing()
+        # self.q4_subplot.common_postprocessing()
+        # self.q4_subplot.custom_postprocessing()
+        # self.q5_subplot.common_postprocessing()
+        # self.q5_subplot.custom_postprocessing()
+        # self.q6_subplot.common_postprocessing()
+        # self.q6_subplot.custom_postprocessing()
 
         super().__exit__(exc_type, exc_value, traceback)
         return None

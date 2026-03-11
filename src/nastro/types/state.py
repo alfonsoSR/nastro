@@ -42,7 +42,9 @@ class GenericState[U: (Double, Vector)]:
     ) -> None:
 
         if is_double(q1):
-            _input = np.array([q1, q2, q3, q4, q5, q6], dtype=np.float64)[:, None]
+            _input = np.array([q1, q2, q3, q4, q5, q6], dtype=np.float64)[
+                :, None
+            ]
             assert len(_input.shape) == 2
             assert _input.shape == (6, 1)
         elif is_vector(q1):
@@ -84,7 +86,9 @@ class GenericState[U: (Double, Vector)]:
                 setattr(
                     self,
                     self.properties[key],
-                    self.__wrap_angle(getattr(self, self.properties[key]), limits),
+                    self.__wrap_angle(
+                        getattr(self, self.properties[key]), limits
+                    ),
                 )
 
         return None
@@ -109,7 +113,9 @@ class GenericState[U: (Double, Vector)]:
         return out
 
     @staticmethod
-    def __wrap_angle(angle: U, limits: tuple[Double, Double] = (0.0, twopi)) -> U:
+    def __wrap_angle(
+        angle: U, limits: tuple[Double, Double] = (0.0, twopi)
+    ) -> U:
         """Wrap angle to limits"""
 
         low, high = limits
@@ -124,8 +130,12 @@ class GenericState[U: (Double, Vector)]:
         if low == -pi and high == pi:
             return out
 
-        positive = (out * (out < halfpi) + (pi - out) * (out >= halfpi)) * (out >= 0)
-        negative = (out * (out > -halfpi) - (pi + out) * (out <= -halfpi)) * (out < 0)
+        positive = (out * (out < halfpi) + (pi - out) * (out >= halfpi)) * (
+            out >= 0
+        )
+        negative = (out * (out > -halfpi) - (pi + out) * (out <= -halfpi)) * (
+            out < 0
+        )
 
         if low == -halfpi and high == halfpi:
             return positive + negative
@@ -142,7 +152,9 @@ class GenericState[U: (Double, Vector)]:
             key = name[:-4]
             return np.rad2deg(getattr(self, key))
 
-        raise AttributeError(f"{name} is not a property of {self.__class__.__name__}! ")
+        raise AttributeError(
+            f"{name} is not a property of {self.__class__.__name__}! "
+        )
 
     def __getitem__(self, index: int | slice) -> Self:
 
@@ -152,7 +164,14 @@ class GenericState[U: (Double, Vector)]:
 
         if self.scalar:
             return iter(
-                [self.q1[0], self.q2[0], self.q3[0], self.q4[0], self.q5[0], self.q6[0]]
+                [
+                    self.q1[0],
+                    self.q2[0],
+                    self.q3[0],
+                    self.q4[0],
+                    self.q5[0],
+                    self.q6[0],
+                ]
             )
         return iter([self.__getitem__(idx) for idx in range(self.size)])
 
@@ -291,23 +310,31 @@ class GenericState[U: (Double, Vector)]:
         if path.suffix == ".npy":
             return cls(*np.load(path))
         else:
-            raise ValueError("Failed to load state vector. Invalid file extension.")
+            raise ValueError(
+                "Failed to load state vector. Invalid file extension."
+            )
 
     @classmethod
     def from_tudat(
-        cls, state_history: dict[Double, list[Double]], limits: tuple[int, int] = (0, 6)
+        cls,
+        state_history: dict[Double, list[Double]],
+        limits: tuple[int, int] = (0, 6),
     ) -> Self:
         """Generate state vector from Tudat state history
 
         :param state_history: Dictionary with epochs and state components
         :param limits: Range of state components to consider
         """
-        return cls(*np.array(list(state_history.values())).T[limits[0] : limits[1]])
+        return cls(
+            *np.array(list(state_history.values())).T[limits[0] : limits[1]]
+        )
 
     # Frame conversions
     def transform(self) -> Self:
         """Transform state to a different reference frame"""
-        raise NotImplementedError("Frame transformations are not implemented yet")
+        raise NotImplementedError(
+            "Frame transformations are not implemented yet"
+        )
 
 
 class CartesianState[U: (Double, Vector)](GenericState[U]):
@@ -352,7 +379,9 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
     def r_uvec(self) -> Vector:
         """Cartesian position unit vector as numpy array"""
         if np.any(self.r_mag == 0.0):
-            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+            raise ValueError(
+                "Failed to compute unit vector. Zero magnitude vector."
+            )
         return self.r_vec / self.r_mag
 
     @property
@@ -369,7 +398,9 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
     def v_uvec(self) -> Vector:
         """Cartesian velocity unit vector as numpy array"""
         if np.any(self.v_mag == 0.0):
-            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+            raise ValueError(
+                "Failed to compute unit vector. Zero magnitude vector."
+            )
         return self.v_vec / self.v_mag
 
     def to_keplerian(self, mu: Double) -> "KeplerianState":
@@ -390,7 +421,9 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
         h = np.linalg.norm(h_vec, axis=0)
 
         # Eccentricity
-        e_vec = (np.cross(self.v_vec, h_vec, axis=0) / mu) - (self.r_vec / self.r_mag)
+        e_vec = (np.cross(self.v_vec, h_vec, axis=0) / mu) - (
+            self.r_vec / self.r_mag
+        )
         e = np.linalg.norm(e_vec, axis=0)
         e_uvec = e_vec / e
 
@@ -409,7 +442,9 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
         raan = np.arctan2(N_vec[1] / Nxy, N_vec[0] / Nxy)
 
         # Argument of periapsis
-        sign_aop_condition = np.sum(np.cross(N_uvec, e_vec, axis=0) * h_vec, axis=0) > 0
+        sign_aop_condition = (
+            np.sum(np.cross(N_uvec, e_vec, axis=0) * h_vec, axis=0) > 0
+        )
         sign_aop = 2 * sign_aop_condition - 1
         aop = sign_aop * np.arccos(np.sum(e_uvec * N_uvec, axis=0))
 
@@ -418,7 +453,9 @@ class CartesianState[U: (Double, Vector)](GenericState[U]):
             np.sum(np.cross(e_vec, self.r_vec, axis=0) * h_vec, axis=0) > 0
         )
         sign_ta = 2 * sign_ta_condition - 1
-        ta = sign_ta * np.arccos(np.sum(self.r_vec * e_uvec / self.r_mag, axis=0))
+        ta = sign_ta * np.arccos(
+            np.sum(self.r_vec * e_uvec / self.r_mag, axis=0)
+        )
 
         return KeplerianState(a, e, inc, raan, aop, ta, deg=False)
 
@@ -481,14 +518,18 @@ class CartesianStateDerivative[U: (Double, Vector)](GenericState[U]):
     def v_uvec(self) -> Vector:
         """Cartesian velocity unit vector as numpy array"""
         if np.any(self.v_mag == 0.0):
-            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+            raise ValueError(
+                "Failed to compute unit vector. Zero magnitude vector."
+            )
         return self.v_vec / self.v_mag
 
     @property
     def a_uvec(self) -> Vector:
         """Cartesian acceleration unit vector as numpy array"""
         if np.any(self.a_mag == 0.0):
-            raise ValueError("Failed to compute unit vector. Zero magnitude vector.")
+            raise ValueError(
+                "Failed to compute unit vector. Zero magnitude vector."
+            )
         return self.a_vec / self.a_mag
 
     def times_dt(self, dt: Double) -> CartesianState:
@@ -632,8 +673,12 @@ class KeplerianState[U: (Double, Vector)](GenericState[U]):
         draan: Any = np.unwrap(self.q4, period=twopi) - np.unwrap(
             other.q4, period=twopi
         )
-        daop: Any = np.unwrap(self.q5, period=twopi) - np.unwrap(other.q5, period=twopi)
-        dta: Any = np.unwrap(self.q6, period=twopi) - np.unwrap(other.q6, period=twopi)
+        daop: Any = np.unwrap(self.q5, period=twopi) - np.unwrap(
+            other.q5, period=twopi
+        )
+        dta: Any = np.unwrap(self.q6, period=twopi) - np.unwrap(
+            other.q6, period=twopi
+        )
 
         return type(self)(da, de, di, draan, daop, dta, wrap=False)
 

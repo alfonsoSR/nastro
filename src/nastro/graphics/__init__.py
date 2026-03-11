@@ -32,15 +32,15 @@ Astrodynamics plots
 
 """
 
-from .core import (
-    PlotSetup,
-    Mosaic,
+from .settings import PlotSetup
+from .core import BaseFigure
+from .figures import (
     SingleAxis,
     DoubleAxis,
     ParasiteAxis,
-    Plot3D,
-    BaseFigure,
     Legend,
+    Plot3D,
+    Mosaic,
 )
 from .astro import (
     PlotCartesianState,

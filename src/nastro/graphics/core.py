@@ -9,12 +9,11 @@ from typing import (
     Sequence,
     Optional,
 )
-from matplotlib.gridspec import GridSpec, SubplotSpec
+from matplotlib.gridspec import GridSpec
 import numpy as np
 from matplotlib.figure import SubFigure, Figure as mplFigure
 from matplotlib.axes import Axes
-from mpl_toolkits.mplot3d import Axes3D, axes3d
-from matplotlib import _api
+from mpl_toolkits.mplot3d import Axes3D
 
 import matplotlib.cbook as cbook
 from dataclasses import dataclass
@@ -24,7 +23,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from ..types import Scalar, Array
 from matplotlib.rcsetup import cycler
-import matplotlib.transforms as mtra
+from .settings import PlotSetup
 
 PlotType = TypeVar("PlotType", bound="BaseFigure")
 FigureLike: TypeAlias = SubFigure | mplFigure
@@ -64,143 +63,6 @@ class Artist:
     type: str
     color: Optional[str]
     object: Any
-
-
-@dataclass
-class PlotSetup:
-
-    # Canvas configuration
-    canvas_color: str | None = None
-    canvas_size: tuple[float, float] = (7, 4)
-    canvas_layout: Literal["tight", "constrained", "none", "compressed"] = (
-        "constrained"
-    )
-    canvas_title: str | None = None
-
-    # Figure configuration
-    subfigure_color: Optional[str] = None
-    subfigure_edgecolor: Optional[str] = None
-    subfigure_edgewidth: float = 0.0
-    subfigure_title: Optional[str] = None
-    h_padding: float = 25 / 72
-    w_padding: float = 30 / 72
-
-    # Basic figure configuration
-    figsize: tuple[float, float] = (7, 4)
-    layout: Literal["tight", "constrained", "none", "compressed"] = "compressed"
-    aspect: Literal["auto", "equal"] = "auto"
-    figcolor: str | None = None
-    title: str | None = None
-
-    # Save and show
-    show: bool = True
-    save: bool = False
-    dir: Path | str | None = None
-    name: str | None = None
-
-    # Subplot configuration
-    axtitle: str | None = None
-
-    xlabel: str | None = None
-    ylabel: str | None = None
-    zlabel: str | None = None
-    rlabel: str | None = None
-    plabel: str | None = None
-
-    xscale: Literal["linear", "log", "symlog", "logit"] = "linear"
-    yscale: Literal["linear", "log", "symlog", "logit"] = "linear"
-    zscale: Literal["linear", "log", "symlog", "logit"] = "linear"
-    rscale: Literal["linear", "log", "symlog", "logit"] = "linear"
-    pscale: Literal["linear", "log", "symlog", "logit"] = "linear"
-
-    xlim: tuple[float, float] | None = None
-    ylim: tuple[float, float] | None = None
-    zlim: tuple[float, float] | None = None
-    rlim: tuple[float, float] | None = None
-    plim: tuple[float, float] | None = None
-
-    scilimits: tuple[int, int] = (-2, 2)
-    scilimits_x: Optional[tuple[int, int]] = None
-    scilimits_y: Optional[tuple[int, int]] = None
-    scilimits_z: Optional[tuple[int, int]] = None
-    scilimits_r: Optional[tuple[int, int]] = None
-    scilimits_p: Optional[tuple[int, int]] = None
-
-    grid: bool = True
-    grid_alpha: float = 0.15
-
-    minor_ticks: bool = True
-    minor_ticks_x: Optional[bool] = None
-    minor_ticks_y: Optional[bool] = None
-    minor_ticks_z: Optional[bool] = None
-    show_tick_labels_x: bool = True
-    show_tick_labels_y: bool = True
-    show_tick_labels_z: bool = True
-    show_tick_labels_r: bool = True
-    show_tick_labels_p: bool = True
-
-    show_axes: bool = True
-
-    legend: bool = True
-    legend_location: str = "best"
-    legend_title: str | None = None
-    legend_columns: int = 1
-    colorbar: bool = True
-    colorbar_title: str | None = None
-    colorbar_shrink: float = 1.0
-
-    projection: Literal["persp", "ortho"] = "ortho"
-
-    def copy(self) -> "PlotSetup":
-        return PlotSetup(**self.__dict__)
-
-    def version(self, **params) -> "PlotSetup":
-
-        # Get contents of original setup
-        contents = self.__dict__.copy()
-
-        # Update contents with input
-        for param, value in params.items():
-
-            if param in contents:
-                contents[param] = value
-            else:
-                ValueError(f"Invalid parameter: {param}")
-
-        return PlotSetup(**contents)
-
-        # new = self.copy()
-        # for param, value in params.items():
-        #     if hasattr(new, param):
-        #         setattr(new, param, value)
-        #     else:
-        #         raise ValueError(f"Invalid parameter: {param}")
-
-        # return new
-
-    def __post_init__(self) -> None:
-
-        # Minor ticks
-        if self.minor_ticks_x is None:
-            self.minor_ticks_x = self.minor_ticks
-        if self.minor_ticks_y is None:
-            self.minor_ticks_y = self.minor_ticks
-        if self.minor_ticks_z is None:
-            self.minor_ticks_z = self.minor_ticks
-
-        # Scientific notation in labels
-        if self.scilimits_x is None:
-            self.scilimits_x = self.scilimits
-        if self.scilimits_y is None:
-            self.scilimits_y = self.scilimits
-        if self.scilimits_z is None:
-            self.scilimits_z = self.scilimits
-        if self.scilimits_r is None:
-            self.scilimits_r = self.scilimits
-        if self.scilimits_p is None:
-            self.scilimits_p = self.scilimits
-
-        return None
 
 
 class Canvas:
@@ -435,6 +297,33 @@ class BaseFigure(Canvas):
 
         return None
 
+    def process_ticks_and_labels(self, axis) -> None:
+
+        # Ticks and axes
+        axis.tick_params(direction="in", which="both")
+        if axis.get_yscale() == "linear":
+            axis.ticklabel_format(
+                axis="y", scilimits=self.setup.scilimits_y, useMathText=True
+            )
+            if self.setup.minor_ticks_y:
+                axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        if axis.get_xscale() == "linear":
+            axis.ticklabel_format(
+                axis="x", scilimits=self.setup.scilimits_x, useMathText=True
+            )
+            if self.setup.minor_ticks_x:
+                axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+        # Do not show ticks if requested
+        if not self.setup.show_tick_labels_x:
+            axis.xaxis.set_major_formatter(ticker.NullFormatter())
+            axis.xaxis.set_major_formatter(ticker.NullFormatter())
+        if not self.setup.show_tick_labels_y:
+            axis.yaxis.set_major_formatter(ticker.NullFormatter())
+            axis.yaxis.set_minor_formatter(ticker.NullFormatter())
+
+        return None
+
     def common_postprocessing(self) -> None:
 
         # Colors
@@ -463,12 +352,22 @@ class BaseFigure(Canvas):
                         line.set_color(color)
 
                 case "barh":
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     for bar in artist.object:
-                        bar.set_color(self.next_color())
+                        bar.set_color(color)
 
                 case "bar":
+                    color = (
+                        self.next_color()
+                        if artist.color is None
+                        else artist.color
+                    )
                     for bar in artist.object:
-                        bar.set_color(self.next_color())
+                        bar.set_color(color)
 
                 case "hist":
                     color = (
@@ -522,28 +421,9 @@ class BaseFigure(Canvas):
         legend_handles = []
         for axis in self.axes.values():
 
-            # Ticks and axes
-            axis.tick_params(direction="in", which="both")
-            if axis.get_yscale() == "linear":
-                axis.ticklabel_format(
-                    axis="y", scilimits=self.setup.scilimits_y, useMathText=True
-                )
-                if self.setup.minor_ticks_y:
-                    axis.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-            if axis.get_xscale() == "linear":
-                axis.ticklabel_format(
-                    axis="x", scilimits=self.setup.scilimits_x, useMathText=True
-                )
-                if self.setup.minor_ticks_x:
-                    axis.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-
-            # Do not show ticks if requested
-            if not self.setup.show_tick_labels_x:
-                axis.xaxis.set_major_formatter(ticker.NullFormatter())
-                axis.xaxis.set_major_formatter(ticker.NullFormatter())
-            if not self.setup.show_tick_labels_y:
-                axis.yaxis.set_major_formatter(ticker.NullFormatter())
-                axis.yaxis.set_minor_formatter(ticker.NullFormatter())
+            # Process ticks if requested
+            if not self.setup.custom_ticks:
+                self.process_ticks_and_labels(axis)
 
             if not self.setup.show_axes:
                 axis.axis("off")
@@ -617,7 +497,11 @@ class BaseFigure(Canvas):
             label=label,
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        if (label is not None) and (label not in self.artists):
+            name = label
+        else:
+            name = self.__default_artist_label()
+
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -769,11 +653,12 @@ class BaseFigure(Canvas):
         width: float = 0.8,
         ticks: Optional[Array] = None,
         axis: str = "left",
+        color: str | None = None,
     ) -> None:
 
         bar = self.axes[axis].bar(x, height, width=width, tick_label=ticks)
         name = self.__default_artist_label()
-        self.artists[name] = Artist(axis, "bar", None, bar)
+        self.artists[name] = Artist(axis, "bar", color, bar)
 
         return None
 
@@ -784,11 +669,12 @@ class BaseFigure(Canvas):
         height: float = 0.8,
         ticks: Optional[Array] = None,
         axis: str = "left",
+        color: str | None = None,
     ) -> None:
 
         bar = self.axes[axis].barh(y, width, height=height, tick_label=ticks)
         name = self.__default_artist_label()
-        self.artists[name] = Artist(axis, "barh", None, bar)
+        self.artists[name] = Artist(axis, "barh", color, bar)
 
         return None
 
@@ -800,6 +686,7 @@ class BaseFigure(Canvas):
         cumulative: bool = False,
         hist_type: Literal["bar", "barstacked", "step", "stepfilled"] = "bar",
         align: Literal["left", "mid", "right"] = "mid",
+        orientation: Literal["vertical", "horizontal"] = "vertical",
         label: Optional[str] = None,
         color: Optional[str] = None,
         alpha: float = 0.8,
@@ -816,6 +703,7 @@ class BaseFigure(Canvas):
             label=label,
             color=color,
             alpha=alpha,
+            orientation=orientation,
         )
 
         name = label if label is not None else self.__default_artist_label()
@@ -823,7 +711,13 @@ class BaseFigure(Canvas):
 
         return None
 
-    def imshow(self, data: Array, cmap: str = "GnBu") -> None:
+    def imshow(
+        self,
+        data: Array,
+        cmap: str = "GnBu",
+        vmin: float | None = None,
+        vmax: float | None = None,
+    ) -> None:
 
         data = np.array(data)
         if data.ndim != 2:
@@ -831,7 +725,7 @@ class BaseFigure(Canvas):
         if data.shape[0] != data.shape[1]:
             raise ValueError("Data must be square.")
 
-        image = self.axes["left"].imshow(data, cmap=cmap)
+        image = self.axes["left"].imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
         name = self.__default_artist_label()
         self.artists[name] = Artist("left", "image", None, image)
 
@@ -888,263 +782,3 @@ class BaseFigure(Canvas):
         self.artists[name] = Artist("left", "cmap", color, contours)
 
         return None
-
-
-class SingleAxis(BaseFigure):
-
-    @property
-    def ax(self) -> Axes:
-        return self.axes["left"]
-
-    @property
-    def left(self) -> Axes:
-        return self.axes["left"]
-
-
-class DoubleAxis(BaseFigure):
-
-    @property
-    def left(self) -> Axes:
-        return self.axes["left"]
-
-    @property
-    def right(self) -> Axes:
-        return self.axes["right"]
-
-    @property
-    def parax(self) -> Axes:
-        return self.axes["parasite"]
-
-    def custom_configuration(self) -> None:
-
-        __right = self.axes["left"].twinx()
-        assert isinstance(__right, Axes)
-        self.axes["right"] = __right
-
-        return None
-
-    def custom_postprocessing(self) -> None:
-
-        # Add color indicator to label
-        lines = self.axes["right"].get_lines()
-        # if len(lines) > 1:
-        #     raise ValueError("Don't plot more than one line in the right axis.")
-        self.axes["right"].yaxis.label.set_color(lines[0].get_color())
-
-        # Do not show ticks if requested
-        if not self.setup.show_tick_labels_r:
-            self.axes["right"].yaxis.set_major_formatter(ticker.NullFormatter())
-            self.axes["right"].yaxis.set_minor_formatter(ticker.NullFormatter())
-
-        return None
-
-
-class ParasiteAxis(BaseFigure):
-
-    @property
-    def left(self) -> Axes:
-        return self.axes["left"]
-
-    @property
-    def right(self) -> Axes:
-        return self.axes["right"]
-
-    @property
-    def parax(self) -> Axes:
-        return self.axes["parasite"]
-
-    def custom_configuration(self) -> None:
-
-        __right = self.axes["left"].twinx()
-        assert isinstance(__right, Axes)
-        self.axes["right"] = __right
-
-        __parax = self.axes["left"].twinx()
-        assert isinstance(__parax, Axes)
-        self.axes["parasite"] = __parax
-        self.axes["parasite"].spines.right.set_position(("axes", 1.2))
-
-        return None
-
-    def custom_postprocessing(self) -> None:
-
-        # Add color indicator to label
-        lines = self.axes["right"].get_lines()
-        if len(lines) > 1:
-            raise ValueError("Don't plot more than one line in the right axis.")
-        self.axes["right"].yaxis.label.set_color(lines[-1].get_color())
-
-        lines = self.axes["parasite"].get_lines()
-        if len(lines) > 1:
-            raise ValueError(
-                "Don't plot more than one line in the parasite axis."
-            )
-        self.axes["parasite"].yaxis.label.set_color(lines[-1].get_color())
-
-        # Do not show ticks if requested
-        if not self.setup.show_tick_labels_r:
-            self.axes["right"].yaxis.set_major_formatter(ticker.NullFormatter())
-            self.axes["right"].yaxis.set_minor_formatter(ticker.NullFormatter())
-        if not self.setup.show_tick_labels_p:
-            self.axes["parasite"].yaxis.set_major_formatter(
-                ticker.NullFormatter()
-            )
-            self.axes["parasite"].yaxis.set_minor_formatter(
-                ticker.NullFormatter()
-            )
-
-        return None
-
-
-class Legend(BaseFigure):
-
-    def __init__(
-        self, setup: PlotSetup = PlotSetup(), _figure: FigureLike | None = None
-    ) -> None:
-
-        setup.show_axes = False
-        setup.legend_location = "center"
-        setup.ylim = (1, 2)
-        setup.xlim = (1, 2)
-
-        super().__init__(setup, _figure)
-
-        return None
-
-    def add_legend(self, figure: BaseFigure) -> None:
-
-        # Disable legend from figure
-        figure.setup.legend = False
-
-        for key, val in figure.artists.items():
-
-            if key.startswith(self._default_prefix):
-                continue
-
-            self.line(0, 0, fmt="o", color=val.color, label=key)
-
-        return None
-
-
-class Plot3D(BaseFigure):
-
-    def __init__(
-        self,
-        setup: PlotSetup = PlotSetup(),
-        _figure: FigureLike | None = None,
-    ) -> None:
-
-        setup.minor_ticks_x = False
-        setup.minor_ticks_y = False
-        setup.minor_ticks_z = False
-        setup.minor_ticks = False
-
-        super().__init__(setup, _figure)
-
-    def generate_subplot(self) -> Axes:
-
-        ax = self.figure.add_subplot(
-            projection="3d",
-            proj_type=self.setup.projection,
-            box_aspect=(1, 1, 1),
-            azim=50,
-        )
-        return ax
-
-    def custom_postprocessing(self) -> None:
-
-        ax: Any = self.axes["left"]
-
-        if ax.get_zscale() == "linear":
-            ax.ticklabel_format(
-                axis="z", scilimits=self.setup.scilimits_z, useMathText=True
-            )
-            if self.setup.minor_ticks_z:
-                ax.zaxis.set_minor_locator(ticker.AutoMinorLocator())
-
-        layout_engine = self.figure.get_layout_engine()
-        assert layout_engine is not None
-        layout_engine.set(w_pad=self.setup.w_padding, h_pad=self.setup.h_padding)  # type: ignore
-
-    def line(
-        self,
-        x: Array | Scalar,
-        y: Optional[Array | Scalar] = None,
-        z: Optional[Array | Scalar] = None,
-        fmt: str = "-",
-        width: Optional[float] = None,
-        markersize: Optional[float] = None,
-        color: Optional[str] = None,
-        alpha: float = 1.0,
-        label: Optional[str] = None,
-        axis: str = "left",
-    ) -> None:
-
-        assert y is not None and z is not None
-        (line,) = self.axes[axis].plot(
-            x,
-            y,
-            z,
-            fmt,
-            linewidth=width,
-            markersize=markersize,
-            color=color,
-            alpha=alpha,
-            label=label,
-        )
-
-        name = label if label is not None else self.__default_artist_label()
-        self.artists[name] = Artist(axis, "line", color, line)
-
-        return None
-
-    def surface(
-        self,
-        x: Array,
-        y: Array,
-        z: Array,
-        color: Optional[str] = None,
-        alpha: float = 1.0,
-        label: Optional[str] = None,
-        axis: str = "left",
-    ) -> None:
-
-        if color is None:
-            for _ in range(len(self.artists.keys())):
-                self.next_color()
-            color = self.next_color()
-        surface = self.axes[axis].plot_surface(  # type: ignore
-            x, y, z, color=color, alpha=alpha, label=label
-        )
-
-        name = label if label is not None else self.__default_artist_label()
-        self.artists[name] = Artist(axis, "surface", color, surface)
-
-        return None
-
-
-class Mosaic(Canvas):
-
-    def __init__(self, mosaic: str, setup: Optional[PlotSetup] = None) -> None:
-        super().__init__(mosaic, setup if setup is not None else PlotSetup())
-
-    def subplot(
-        self,
-        setup: Optional[PlotSetup] = None,
-        generator: type[PlotType] = SingleAxis,
-    ) -> PlotType:
-
-        if setup is None:
-            setup = PlotSetup()
-
-        subfigure = self.canvas.add_subfigure(
-            self.canvas_gridspec[next(self.canvas_structure)],
-            facecolor=setup.subfigure_color,
-            edgecolor=setup.subfigure_edgecolor,
-            linewidth=setup.subfigure_edgewidth,
-        )
-
-        if setup.subfigure_title:
-            subfigure.suptitle(setup.subfigure_title)
-
-        return generator(setup, subfigure)
