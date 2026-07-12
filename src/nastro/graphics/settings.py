@@ -34,6 +34,7 @@ class PlotSetup:
     save: bool = False
     dir: Path | str | None = None
     name: str | None = None
+    transparent_background: bool = False
 
     # Subplot configuration
     axtitle: str | None = None

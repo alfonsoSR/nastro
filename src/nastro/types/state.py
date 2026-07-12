@@ -842,6 +842,25 @@ class CartesianPosition[U: (Double, Vector)](GenericState[U]):
         """Time series of position vectors as a (3, N) numpy array"""
         return np.array([self.q1, self.q2, self.q3], dtype=np.float64)
 
+    @property
+    def r_vec(self) -> Vector:
+        """Cartesian position vector as numpy array"""
+        return np.array([self.x, self.y, self.z])
+
+    @property
+    def r_mag(self) -> U:
+        """Magnitude of the position vector"""
+        return np.linalg.norm(self.r_vec, axis=0)
+
+    @property
+    def r_uvec(self) -> Vector:
+        """Cartesian position unit vector as numpy array"""
+        if np.any(self.r_mag == 0.0):
+            raise ValueError(
+                "Failed to compute unit vector. Zero magnitude vector."
+            )
+        return self.r_vec / self.r_mag
+
 
 class CartesianVelocity[U: (Double, Vector)](GenericState[U]):
     """Three dimensional velocity vector in cartesian coordinates

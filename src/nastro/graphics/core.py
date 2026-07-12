@@ -189,7 +189,10 @@ class Canvas:
                 )
             path = Path(self.canvas_setup.dir) / self.canvas_setup.name
             path.parent.mkdir(parents=True, exist_ok=True)
-            self.canvas.savefig(path)
+            self.canvas.savefig(
+                path,
+                transparent=self.canvas_setup.transparent_background,
+            )
 
         if self.canvas_setup.show:
             plt.show()
@@ -394,6 +397,7 @@ class BaseFigure(Canvas):
                             ax=self.axes["left"],
                             label=self.setup.colorbar_title,
                             shrink=self.setup.colorbar_shrink,
+                            format="%.1f",
                         )
 
                 case "patch":
