@@ -8,11 +8,13 @@ __state.py
 # macOS files
 .DS_Store
 
+
 # Caches
 *cache*
 *.bkp
 *.dtmp
 *.ipynb_checkpoints
+.vscode
 
 # Sphinx
 build
