@@ -5,8 +5,9 @@ dist
 *egg-info*
 __state.py
 
-# macOS files
+# Hidden files
 .DS_Store
+.vscode
 
 # Caches
 *cache*
