@@ -448,6 +448,7 @@ class BaseFigure(Canvas):
                 handles=legend_handles,
                 title=self.setup.legend_title,
                 ncols=self.setup.legend_columns,
+                framealpha=self.setup.legend_alpha,
             )
 
         return None

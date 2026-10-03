@@ -84,6 +84,7 @@ class PlotSetup:
     legend_location: str = "best"
     legend_title: str | None = None
     legend_columns: int = 1
+    legend_alpha: float = 1.0
     colorbar: bool = True
     colorbar_title: str | None = None
     colorbar_shrink: float = 1.0
