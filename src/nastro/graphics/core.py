@@ -588,7 +588,7 @@ class BaseFigure(Canvas):
 
         return True
 
-    def __default_artist_label(self) -> str:
+    def _default_artist_label(self) -> str:
 
         return f"{self._default_prefix}{len(self.artists)}"
 
@@ -617,7 +617,7 @@ class BaseFigure(Canvas):
             label=label,
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -646,7 +646,7 @@ class BaseFigure(Canvas):
             )
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "limits", color, boundary)
 
         return None
@@ -683,7 +683,7 @@ class BaseFigure(Canvas):
             label=label,
         )  # type: ignore
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "limits", color, boundary)
 
         return None
@@ -712,7 +712,7 @@ class BaseFigure(Canvas):
             )
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "vlimits", color, boundary)
 
         return None
@@ -733,7 +733,7 @@ class BaseFigure(Canvas):
             x, y, z=z, yerr=error, fmt=fmt, color=color, label=label
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "errorbar", color, errorbar)
 
         return None
@@ -757,7 +757,7 @@ class BaseFigure(Canvas):
             color=color,
             label=label,
         )
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "step", color, step)
 
         return None
@@ -772,7 +772,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         bar = self.axes[axis].bar(x, height, width=width, tick_label=ticks)
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist(axis, "bar", None, bar)
 
         return None
@@ -787,7 +787,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         bar = self.axes[axis].barh(y, width, height=height, tick_label=ticks)
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist(axis, "barh", None, bar)
 
         return None
@@ -818,7 +818,7 @@ class BaseFigure(Canvas):
             alpha=alpha,
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "hist", color, histogram)
 
         return None
@@ -832,7 +832,7 @@ class BaseFigure(Canvas):
             raise ValueError("Data must be square.")
 
         image = self.axes["left"].imshow(data, cmap=cmap)
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist("left", "image", None, image)
 
         return None
@@ -842,7 +842,7 @@ class BaseFigure(Canvas):
     ) -> None:
 
         map = self.axes["left"].pcolormesh(x, y, z, cmap=cmap)
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist("left", "image", None, map)
 
         return None
@@ -850,7 +850,7 @@ class BaseFigure(Canvas):
     def patch(self, patch) -> None:
 
         patch = self.axes["left"].add_patch(patch)
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist("left", "patch", None, patch)
 
     def contour(
@@ -866,7 +866,7 @@ class BaseFigure(Canvas):
         contours = self.axes["left"].contour(
             x, y, z, levels=levels, colors=color, cmap=cmap
         )
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist("left", "contour", color, contours)
 
         return None
@@ -884,7 +884,7 @@ class BaseFigure(Canvas):
         contours = self.axes["left"].contourf(
             x, y, z, levels=levels, colors=color, cmap=cmap
         )
-        name = self.__default_artist_label()
+        name = self._default_artist_label()
         self.artists[name] = Artist("left", "cmap", color, contours)
 
         return None
@@ -1093,7 +1093,7 @@ class Plot3D(BaseFigure):
             label=label,
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -1117,7 +1117,7 @@ class Plot3D(BaseFigure):
             x, y, z, color=color, alpha=alpha, label=label
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "surface", color, surface)
 
         return None
