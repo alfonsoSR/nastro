@@ -804,6 +804,7 @@ class BaseFigure(Canvas):
         color: Optional[str] = None,
         alpha: float = 0.8,
         axis: str = "left",
+        orientation: Literal["vertical", "horizontal"] = "vertical",
     ) -> None:
 
         _, _, histogram = self.axes[axis].hist(
@@ -816,6 +817,7 @@ class BaseFigure(Canvas):
             label=label,
             color=color,
             alpha=alpha,
+            orientation=orientation,
         )
 
         name = label if label is not None else self._default_artist_label()
