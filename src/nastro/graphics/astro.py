@@ -1,14 +1,16 @@
 from ..types import KeplerianState, CartesianState, Vector
 from ..constants import day
-from . import core as ng
-from typing import Optional
+from .figures import Mosaic, Plot3D
+from .settings import PlotSetup
+from typing import TYPE_CHECKING
 
-# TODO: ADD DOCSTRINGS
+if TYPE_CHECKING:
+    from .figures import SingleAxis
 
 
-class StatePlot(ng.Mosaic):
+class StatePlot(Mosaic):
 
-    def __init__(self, setup: ng.PlotSetup = ng.PlotSetup()) -> None:
+    def __init__(self, setup: PlotSetup = PlotSetup()) -> None:
 
         super().__init__("ab;cd;ef", setup)
 
@@ -18,36 +20,40 @@ class StatePlot(ng.Mosaic):
 
         subplot_setups = self.subplot_setup()
 
-        self.q1_subplot = self.subplot(setup=subplot_setups[0])
-        self.q4_subplot = self.subplot(setup=subplot_setups[3])
-        self.q2_subplot = self.subplot(setup=subplot_setups[1])
-        self.q5_subplot = self.subplot(setup=subplot_setups[4])
-        self.q3_subplot = self.subplot(setup=subplot_setups[2])
-        self.q6_subplot = self.subplot(setup=subplot_setups[5])
+        self.q1_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[0])
+        self.q4_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[3])
+        self.q2_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[1])
+        self.q5_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[4])
+        self.q3_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[2])
+        self.q6_subplot: "SingleAxis" = self.subplot(setup=subplot_setups[5])
 
         return None
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
         raise NotImplementedError
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
 
-        # I did this quickly because I was working on something else
-        self.q1_subplot.common_postprocessing()
-        self.q1_subplot.custom_postprocessing()
-        self.q2_subplot.common_postprocessing()
-        self.q2_subplot.custom_postprocessing()
-        self.q3_subplot.common_postprocessing()
-        self.q3_subplot.custom_postprocessing()
-        self.q4_subplot.common_postprocessing()
-        self.q4_subplot.custom_postprocessing()
-        self.q5_subplot.common_postprocessing()
-        self.q5_subplot.custom_postprocessing()
-        self.q6_subplot.common_postprocessing()
-        self.q6_subplot.custom_postprocessing()
+        for idx in range(1, 7):
+            getattr(self, f"q{idx}_subplot").common_postprocessing()
+            getattr(self, f"q{idx}_subplot").custom_postprocessing()
+
+        # # I did this quickly because I was working on something else
+        # self.q1_subplot.common_postprocessing()
+        # self.q1_subplot.custom_postprocessing()
+        # self.q2_subplot.common_postprocessing()
+        # self.q2_subplot.custom_postprocessing()
+        # self.q3_subplot.common_postprocessing()
+        # self.q3_subplot.custom_postprocessing()
+        # self.q4_subplot.common_postprocessing()
+        # self.q4_subplot.custom_postprocessing()
+        # self.q5_subplot.common_postprocessing()
+        # self.q5_subplot.custom_postprocessing()
+        # self.q6_subplot.common_postprocessing()
+        # self.q6_subplot.custom_postprocessing()
 
         super().__exit__(exc_type, exc_value, traceback)
-        return None
+        return True
 
 
 class PlotState(StatePlot):
@@ -55,7 +61,7 @@ class PlotState(StatePlot):
     def add_state(
         self,
         time: Vector,
-        state: CartesianState | KeplerianState,
+        state: CartesianState[Vector] | KeplerianState[Vector],
         fmt: str = "-",
         is_dt: bool = False,
     ) -> None:
@@ -82,10 +88,12 @@ class PlotState(StatePlot):
 
 class CompareState(StatePlot):
 
-    def compare_states[T: (
-        CartesianState,
-        KeplerianState,
-    )](
+    def compare_states[
+        T: (
+            CartesianState[Vector],
+            KeplerianState[Vector],
+        )
+    ](
         self,
         time: Vector,
         orbit: T,
@@ -111,7 +119,7 @@ class CompareState(StatePlot):
 class PlotKeplerianState(PlotState):
     """Plot components of a keplerian state vector"""
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
 
         base_setup = self.canvas_setup.copy()
 
@@ -145,7 +153,7 @@ class PlotCartesianState(PlotState):
         Plot setup
     """
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
 
         base_setup = self.canvas_setup.copy()
 
@@ -173,7 +181,7 @@ class PlotCartesianState(PlotState):
 class CompareCartesianStates(CompareState):
     """Plot difference between two sets of cartesian states"""
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
 
         base_setup = self.canvas_setup.copy()
 
@@ -201,7 +209,7 @@ class CompareCartesianStates(CompareState):
 class CompareKeplerianStates(CompareState):
     """Plot difference between two sets of keplerian states"""
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
 
         base_setup = self.canvas_setup.copy()
 
@@ -235,7 +243,7 @@ class CompareKeplerianStates(CompareState):
 
 class CompareRswStates(CompareState):
 
-    def subplot_setup(self) -> list[ng.PlotSetup]:
+    def subplot_setup(self) -> list[PlotSetup]:
 
         base_setup = self.canvas_setup.copy()
 
@@ -260,11 +268,11 @@ class CompareRswStates(CompareState):
         return [dr_setup, ds_setup, dw_setup, ddr_setup, dds_setup, ddw_setup]
 
 
-class PlotOrbit(ng.Plot3D):
+class PlotOrbit(Plot3D):
 
     def add_orbit(
         self,
-        state: CartesianState,
+        state: CartesianState[Vector],
         fmt: str = "-",
         width: float | None = None,
         markersize: float | None = None,

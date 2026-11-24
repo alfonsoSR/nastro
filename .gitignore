@@ -9,11 +9,13 @@ __state.py
 .DS_Store
 .vscode
 
+
 # Caches
 *cache*
 *.bkp
 *.dtmp
 *.ipynb_checkpoints
+.vscode
 
 # Sphinx
 build
