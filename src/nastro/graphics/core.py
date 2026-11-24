@@ -825,7 +825,13 @@ class BaseFigure(Canvas):
 
         return None
 
-    def imshow(self, data: Array, cmap: str = "GnBu") -> None:
+    def imshow(
+        self,
+        data: Array,
+        cmap: str = "GnBu",
+        vmin: float | None = None,
+        vmax: float | None = None,
+    ) -> None:
 
         data = np.array(data)
         if data.ndim != 2:
@@ -833,7 +839,12 @@ class BaseFigure(Canvas):
         if data.shape[0] != data.shape[1]:
             raise ValueError("Data must be square.")
 
-        image = self.axes["left"].imshow(data, cmap=cmap)
+        image = self.axes["left"].imshow(
+            data,
+            cmap=cmap,
+            vmax=vmax,
+            vmin=vmin,
+        )
         name = self._default_artist_label()
         self.artists[name] = Artist("left", "image", None, image)
 
