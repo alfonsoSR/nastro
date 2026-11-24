@@ -178,7 +178,7 @@ class Plot3D(BaseFigure):
             box_aspect=(1, 1, 1),
             azim=50,
         )
-        return ax
+        return ax  # type: ignore[no-any-return]
 
     def custom_postprocessing(self) -> None:
 
@@ -222,7 +222,7 @@ class Plot3D(BaseFigure):
             label=label,
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "line", color, line)
 
         return None
@@ -246,7 +246,7 @@ class Plot3D(BaseFigure):
             x, y, z, color=color, alpha=alpha, label=label
         )
 
-        name = label if label is not None else self.__default_artist_label()
+        name = label if label is not None else self._default_artist_label()
         self.artists[name] = Artist(axis, "surface", color, surface)
 
         return None
@@ -260,7 +260,7 @@ class Mosaic(Canvas):
     def subplot(
         self,
         setup: Optional[PlotSetup] = None,
-        generator: type[PlotType] = SingleAxis,
+        generator: type[PlotType] = SingleAxis,  # type: ignore[assignment]
     ) -> PlotType:
 
         if setup is None:

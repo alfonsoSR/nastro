@@ -223,7 +223,7 @@ class BaseFigure(Canvas):
             self.figure = self.canvas
         else:
             self.is_subplot = True
-            self.figure = _figure
+            self.figure = _figure  # type: ignore[assignment]
 
         self.axes = {"left": self.generate_subplot()}
 
@@ -239,10 +239,10 @@ class BaseFigure(Canvas):
 
     def next_color(self) -> str:
         try:
-            return next(self.cycler)["color"]
+            return next(self.cycler)["color"]  # type: ignore[no-any-return]
         except StopIteration:
             self.cycler = iter(COLOR_CYCLER)
-            return next(self.cycler)["color"]
+            return next(self.cycler)["color"]  # type: ignore[no-any-return]
 
     def generate_subplot(self) -> AxesLike:
         return self.figure.add_subplot()
@@ -444,7 +444,7 @@ class BaseFigure(Canvas):
         if self.setup.legend and legend_handles != []:
             __last_axis = list(self.axes.values())[-1]
             __last_axis.legend(
-                loc=self.setup.legend_location,
+                loc=self.setup.legend_location,  # type: ignore[call-overload]
                 handles=legend_handles,
                 title=self.setup.legend_title,
                 ncols=self.setup.legend_columns,
@@ -554,14 +554,14 @@ class BaseFigure(Canvas):
             alist = list(self.artists.values())
             for idx in range(1, len(self.artists) + 1):
                 if alist[-idx].axis == axis and alist[-idx].type == "line":
-                    reference = alist[-idx].object
+                    _reference = alist[-idx].object
                     break
         else:
-            reference = self.artists[reference].object
-        assert isinstance(reference, Line2D)
+            _reference = self.artists[reference].object
+        assert isinstance(_reference, Line2D)
 
-        x_data = reference.get_xdata()
-        y_data = reference.get_ydata()
+        x_data = _reference.get_xdata()
+        y_data = _reference.get_ydata()
 
         boundary = self.axes[axis].fill_between(
             x_data,

@@ -16,6 +16,9 @@ from mpl_toolkits.mplot3d.art3d import Line3D
 from matplotlib.rcsetup import cycler
 from typing import Sequence, TypeVar, Any, Literal
 import numpy as np
+import warnings
+
+raise DeprecationWarning("Deprecated module, only kept for docstrings")
 
 # NOTE: DEPRECATED - ONLY KEPT FOR DOCSTRINGS
 
@@ -23,7 +26,7 @@ import numpy as np
 # TODO: SUPPORT FOR 3D PLOTS
 # TODO: SUPPORT FOR FANCY PLOTS (EX: POLAR, IMSHOW, ETC.)
 
-SubplotType = TypeVar("SubplotType", bound="Plot")
+SubplotType = TypeVar("SubplotType", bound="Plot")  # type: ignore[unreachable]
 
 color_cycler = cycler(  # type: ignore
     color=[
@@ -610,7 +613,9 @@ class Plot(BaseFigure):
         axis: str = "left",
     ) -> None:
 
-        bar = self.axes_dict[axis].barh(x, width, height=height, tick_label=ticks)
+        bar = self.axes_dict[axis].barh(
+            x, width, height=height, tick_label=ticks
+        )
         count = len(self.artists) + 1
         self.artists[f"hbar-{count}"] = (axis, bar)
 
@@ -695,12 +700,18 @@ class Plot(BaseFigure):
         if self.setup.yticks is not None and self.setup.yticks_idx is not None:
             self.ax.set_yticks(self.setup.yticks_idx, self.setup.yticks)
         if "right" in self.axes_dict.keys():
-            if self.setup.rticks is not None and self.setup.rticks_idx is not None:
+            if (
+                self.setup.rticks is not None
+                and self.setup.rticks_idx is not None
+            ):
                 self.axes_dict["right"].set_yticks(
                     self.setup.rticks_idx, self.setup.rticks
                 )
         if "parasite" in self.axes_dict.keys():
-            if self.setup.pticks is not None and self.setup.pticks_idx is not None:
+            if (
+                self.setup.pticks is not None
+                and self.setup.pticks_idx is not None
+            ):
                 self.axes_dict["parasite"].set_yticks(
                     self.setup.pticks_idx, self.setup.pticks
                 )
@@ -773,7 +784,11 @@ class Plot(BaseFigure):
             elif isinstance(artist, tuple) and isinstance(artist[2], Rectangle):
                 target, color, boundary = artist
                 if color is None:
-                    color = self.next_color() if target is None else target.get_color()
+                    color = (
+                        self.next_color()
+                        if target is None
+                        else target.get_color()
+                    )
                 boundary.set_color(color)
 
             elif isinstance(artist, list):
@@ -787,7 +802,9 @@ class Plot(BaseFigure):
                         for item in artist:
                             item.set_color(color)
                     except:
-                        raise ValueError(f"Failed to color artist: {type(artist[0])}")
+                        raise ValueError(
+                            f"Failed to color artist: {type(artist[0])}"
+                        )
 
             elif isinstance(artist, AxesImage):
 
@@ -802,10 +819,16 @@ class Plot(BaseFigure):
                 )
 
             # Boundary
-            elif isinstance(artist, tuple) and isinstance(artist[-1], PolyCollection):
+            elif isinstance(artist, tuple) and isinstance(
+                artist[-1], PolyCollection
+            ):
                 target, color, boundary = artist
                 if color is None:
-                    color = self.next_color() if target is None else target.get_color()
+                    color = (
+                        self.next_color()
+                        if target is None
+                        else target.get_color()
+                    )
                 boundary.set_color(color)
             else:
                 print(f"Unknown artist type: {type(artist)}")
@@ -1062,7 +1085,10 @@ class Base3D:
             ]
         ).T
 
-        homogeneous_limits = (np.min(original_limits[0]), np.max(original_limits[1]))
+        homogeneous_limits = (
+            np.min(original_limits[0]),
+            np.max(original_limits[1]),
+        )
 
         self.ax.set_xlim(homogeneous_limits)
         self.ax.set_ylim(homogeneous_limits)
